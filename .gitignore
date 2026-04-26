@@ -1,1 +1,12 @@
 .worktrees/
+logs/
+session-state/
+hook-metrics.jsonl
+startup-metrics.jsonl
+command-history-state.json
+config.json
+memory/project-context-cache.json
+memory/projects/*/last-session.json
+memory/projects/*/project.json
+ide/
+jb/
