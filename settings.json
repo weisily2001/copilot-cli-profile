@@ -1,0 +1,27 @@
+{
+  "allowedUrls": [
+    "https://docs.github.com"
+  ],
+  "model": "Auto",
+  "renderMarkdown": true,
+  "respectGitignore": true,
+  "includeCoAuthoredBy": true,
+  "logLevel": "default",
+  "disableAllHooks": false,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "powershell": "& \"$HOME\\\\.copilot\\\\hooks\\\\ecc-memory\\\\session-start.ps1\"",
+        "timeoutSec": 3
+      }
+    ],
+    "sessionEnd": [
+      {
+        "type": "command",
+        "powershell": "& \"$HOME\\\\.copilot\\\\hooks\\\\ecc-memory\\\\session-end.ps1\"",  
+        "timeoutSec": 3
+      }
+    ]
+  }
+}
