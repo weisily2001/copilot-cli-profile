@@ -28,7 +28,7 @@ function Read-JsonFile {
     throw "Missing file: $Path"
   }
 
-  Get-Content -Path $Path -Raw | ConvertFrom-Json -AsHashtable
+  Get-Content -Path $Path -Raw | ConvertFrom-Json
 }
 
 function Get-PropertyValue {
