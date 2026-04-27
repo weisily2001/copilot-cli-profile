@@ -5,6 +5,60 @@ if (-not (Test-Path $scriptPath)) {
   throw "Missing script: $scriptPath"
 }
 
+function Get-Errors {
+  param($Result)
+
+  if ($null -eq $Result.errors) {
+    return @()
+  }
+
+  return @($Result.errors)
+}
+
+function Format-Errors {
+  param($Result)
+
+  $lines = @(Get-Errors -Result $Result | ForEach-Object {
+      "$($_.path)|$($_.code)|$($_.message)"
+    })
+
+  if ($lines.Count -eq 0) {
+    return '<none>'
+  }
+
+  return $lines -join '; '
+}
+
+function Assert-HasError {
+  param(
+    $Result,
+    [string]$Path,
+    [string]$Code,
+    [string]$Message
+  )
+
+  $matches = @(Get-Errors -Result $Result | Where-Object {
+      $_.path -eq $Path -and $_.code -eq $Code -and $_.message -eq $Message
+    })
+
+  if ($matches.Count -eq 0) {
+    throw "Expected error '$Path|$Code|$Message', got: $(Format-Errors -Result $Result)"
+  }
+}
+
+function Assert-NoErrorMessageLike {
+  param(
+    $Result,
+    [string]$Pattern,
+    [string]$Context
+  )
+
+  $matches = @(Get-Errors -Result $Result | Where-Object { $_.message -match $Pattern })
+  if ($matches.Count -gt 0) {
+    throw "$Context should not include messages matching '$Pattern', got: $(Format-Errors -Result $Result)"
+  }
+}
+
 $result = & $scriptPath | ConvertFrom-Json
 
 if ($result.profileCount -ne 3) {
@@ -18,7 +72,7 @@ foreach ($profileName in @('default', 'research', 'heavy')) {
 }
 
 if ($result.errorCount -ne 0) {
-  throw "Expected errorCount 0, got $($result.errorCount)"
+  throw "Expected errorCount 0, got $($result.errorCount): $(Format-Errors -Result $result)"
 }
 
 $fixtureRoot = Join-Path $PSScriptRoot '_inspect-profiles-smoke'
@@ -74,23 +128,25 @@ try {
 }
 '@ | Set-Content -Path $fixtureLspPath -Encoding utf8
 
-$invalidResult = & $scriptPath `
-  -ProfilesPath $fixtureProfilesPath `
-  -LocalMcpPath $fixtureLocalMcpPath `
-  -RemoteMcpPath $fixtureRemoteMcpPath `
-  -LspPath $fixtureLspPath | ConvertFrom-Json
+  $invalidResult = & $scriptPath `
+    -ProfilesPath $fixtureProfilesPath `
+    -LocalMcpPath $fixtureLocalMcpPath `
+    -RemoteMcpPath $fixtureRemoteMcpPath `
+    -LspPath $fixtureLspPath | ConvertFrom-Json
 
-if ($invalidResult.errorCount -lt 2) {
-  throw "Expected multiple validation errors for fixture profile, got $($invalidResult.errorCount)"
-}
+  if ($invalidResult.errorCount -lt 2) {
+    throw "Expected multiple validation errors for fixture profile, got $($invalidResult.errorCount)"
+  }
 
-if ("Unknown MCP server 'missing-mcp-server' in group 'core-local' for profile 'default'" -notin $invalidResult.errors) {
-  throw "Expected missing MCP server error, got: $($invalidResult.errors -join '; ')"
-}
+  Assert-HasError -Result $invalidResult `
+    -Path 'profiles.mcpGroups.core-local[0]' `
+    -Code 'unknown-reference' `
+    -Message "profiles.mcpGroups.core-local[0] references unknown MCP server 'missing-mcp-server' for profile 'default'"
 
-if ("Unknown LSP server 'json' in group 'docs' for profile 'default'" -notin $invalidResult.errors) {
-  throw "Expected missing LSP server error, got: $($invalidResult.errors -join '; ')"
-}
+  Assert-HasError -Result $invalidResult `
+    -Path 'profiles.lspGroups.docs[0]' `
+    -Code 'unknown-reference' `
+    -Message "profiles.lspGroups.docs[0] references unknown LSP server 'json' for profile 'default'"
 
 @'
 {
@@ -102,30 +158,24 @@ if ("Unknown LSP server 'json' in group 'docs' for profile 'default'" -notin $in
 }
 '@ | Set-Content -Path $fixtureProfilesPath -Encoding utf8
 
-$schemaResult = & $scriptPath `
-  -ProfilesPath $fixtureProfilesPath `
-  -LocalMcpPath $fixtureLocalMcpPath `
-  -RemoteMcpPath $fixtureRemoteMcpPath `
-  -LspPath $fixtureLspPath | ConvertFrom-Json
+  $schemaResult = & $scriptPath `
+    -ProfilesPath $fixtureProfilesPath `
+    -LocalMcpPath $fixtureLocalMcpPath `
+    -RemoteMcpPath $fixtureRemoteMcpPath `
+    -LspPath $fixtureLspPath | ConvertFrom-Json
 
-if ($schemaResult.profileCount -ne 1) {
-  throw "Expected profileCount 1 for schema fixture, got $($schemaResult.profileCount)"
-}
-
-if ('default' -notin $schemaResult.profileNames) {
-  throw "Expected schema fixture to keep profile name, got: $($schemaResult.profileNames -join ', ')"
-}
-
-foreach ($expectedError in @(
-  'Missing profiles.mcpGroups',
-  'Missing profiles.lspGroups',
-  "Profile 'default' is missing mcpGroups",
-  "Profile 'default' is missing lspGroups"
-)) {
-  if ($expectedError -notin $schemaResult.errors) {
-    throw "Expected schema validation error '$expectedError', got: $($schemaResult.errors -join '; ')"
+  if ($schemaResult.profileCount -ne 1) {
+    throw "Expected profileCount 1 for schema fixture, got $($schemaResult.profileCount)"
   }
-}
+
+  if ('default' -notin $schemaResult.profileNames) {
+    throw "Expected schema fixture to keep profile name, got: $($schemaResult.profileNames -join ', ')"
+  }
+
+  Assert-HasError -Result $schemaResult -Path 'profiles.mcpGroups' -Code 'missing-property' -Message 'profiles.mcpGroups is required'
+  Assert-HasError -Result $schemaResult -Path 'profiles.lspGroups' -Code 'missing-property' -Message 'profiles.lspGroups is required'
+  Assert-HasError -Result $schemaResult -Path 'profiles.profiles.default.mcpGroups' -Code 'missing-property' -Message 'profiles.profiles.default.mcpGroups is required'
+  Assert-HasError -Result $schemaResult -Path 'profiles.profiles.default.lspGroups' -Code 'missing-property' -Message 'profiles.profiles.default.lspGroups is required'
 
 @'
 {
@@ -135,33 +185,25 @@ foreach ($expectedError in @(
 }
 '@ | Set-Content -Path $fixtureProfilesPath -Encoding utf8
 
-$wrongTypeRootResult = & $scriptPath `
-  -ProfilesPath $fixtureProfilesPath `
-  -LocalMcpPath $fixtureLocalMcpPath `
-  -RemoteMcpPath $fixtureRemoteMcpPath `
-  -LspPath $fixtureLspPath | ConvertFrom-Json
+  $wrongTypeRootResult = & $scriptPath `
+    -ProfilesPath $fixtureProfilesPath `
+    -LocalMcpPath $fixtureLocalMcpPath `
+    -RemoteMcpPath $fixtureRemoteMcpPath `
+    -LspPath $fixtureLspPath | ConvertFrom-Json
 
-foreach ($expectedError in @(
-  'profiles.profiles must be an object',
-  'profiles.mcpGroups must be an object',
-  'profiles.lspGroups must be an object'
-)) {
-  if ($expectedError -notin $wrongTypeRootResult.errors) {
-    throw "Expected wrong-type validation error '$expectedError', got: $($wrongTypeRootResult.errors -join '; ')"
+  Assert-HasError -Result $wrongTypeRootResult -Path 'profiles.profiles' -Code 'invalid-type' -Message 'profiles.profiles must be an object'
+  Assert-HasError -Result $wrongTypeRootResult -Path 'profiles.mcpGroups' -Code 'invalid-type' -Message 'profiles.mcpGroups must be an object'
+  Assert-HasError -Result $wrongTypeRootResult -Path 'profiles.lspGroups' -Code 'invalid-type' -Message 'profiles.lspGroups must be an object'
+
+  if ($wrongTypeRootResult.profileCount -ne 0) {
+    throw "Expected wrong-type root fixture to expose 0 profiles, got $($wrongTypeRootResult.profileCount)"
   }
-}
 
-if ($wrongTypeRootResult.profileCount -ne 0) {
-  throw "Expected wrong-type root fixture to expose 0 profiles, got $($wrongTypeRootResult.profileCount)"
-}
+  if ($wrongTypeRootResult.profileNames.Count -ne 0) {
+    throw "Expected wrong-type root fixture to avoid bogus profile names, got: $($wrongTypeRootResult.profileNames -join ', ')"
+  }
 
-if ($wrongTypeRootResult.profileNames.Count -ne 0) {
-  throw "Expected wrong-type root fixture to avoid bogus profile names, got: $($wrongTypeRootResult.profileNames -join ', ')"
-}
-
-if (($wrongTypeRootResult.errors -join '; ') -match "'(Length|LongLength|Rank|SyncRoot|IsReadOnly|IsFixedSize|IsSynchronized|Count)'") {
-  throw "Wrong-type root fixture should not report array metadata as profile names: $($wrongTypeRootResult.errors -join '; ')"
-}
+  Assert-NoErrorMessageLike -Result $wrongTypeRootResult -Pattern "'(Length|LongLength|Rank|SyncRoot|IsReadOnly|IsFixedSize|IsSynchronized|Count)'" -Context 'Wrong-type root fixture'
 
 @'
 {
@@ -201,20 +243,17 @@ if (($wrongTypeRootResult.errors -join '; ') -match "'(Length|LongLength|Rank|Sy
 }
 '@ | Set-Content -Path $fixtureLspPath -Encoding utf8
 
-$wrongTypeMcpRootResult = & $scriptPath `
-  -ProfilesPath $fixtureProfilesPath `
-  -LocalMcpPath $fixtureLocalMcpPath `
-  -RemoteMcpPath $fixtureRemoteMcpPath `
-  -LspPath $fixtureLspPath | ConvertFrom-Json
+  $wrongTypeMcpRootResult = & $scriptPath `
+    -ProfilesPath $fixtureProfilesPath `
+    -LocalMcpPath $fixtureLocalMcpPath `
+    -RemoteMcpPath $fixtureRemoteMcpPath `
+    -LspPath $fixtureLspPath | ConvertFrom-Json
 
-foreach ($expectedError in @(
-  'localMcp.mcpServers must be an object',
-  "Unknown MCP server 'Length' in group 'core-local' for profile 'default'"
-)) {
-  if ($expectedError -notin $wrongTypeMcpRootResult.errors) {
-    throw "Expected MCP root wrong-type error '$expectedError', got: $($wrongTypeMcpRootResult.errors -join '; ')"
-  }
-}
+  Assert-HasError -Result $wrongTypeMcpRootResult -Path 'localMcp.mcpServers' -Code 'invalid-type' -Message 'localMcp.mcpServers must be an object'
+  Assert-HasError -Result $wrongTypeMcpRootResult `
+    -Path 'profiles.mcpGroups.core-local[0]' `
+    -Code 'unknown-reference' `
+    -Message "profiles.mcpGroups.core-local[0] references unknown MCP server 'Length' for profile 'default'"
 
 @'
 {
@@ -248,20 +287,17 @@ foreach ($expectedError in @(
 }
 '@ | Set-Content -Path $fixtureLspPath -Encoding utf8
 
-$wrongTypeLspRootResult = & $scriptPath `
-  -ProfilesPath $fixtureProfilesPath `
-  -LocalMcpPath $fixtureLocalMcpPath `
-  -RemoteMcpPath $fixtureRemoteMcpPath `
-  -LspPath $fixtureLspPath | ConvertFrom-Json
+  $wrongTypeLspRootResult = & $scriptPath `
+    -ProfilesPath $fixtureProfilesPath `
+    -LocalMcpPath $fixtureLocalMcpPath `
+    -RemoteMcpPath $fixtureRemoteMcpPath `
+    -LspPath $fixtureLspPath | ConvertFrom-Json
 
-foreach ($expectedError in @(
-  'lsp.lspServers must be an object',
-  "Unknown LSP server 'Count' in group 'docs' for profile 'default'"
-)) {
-  if ($expectedError -notin $wrongTypeLspRootResult.errors) {
-    throw "Expected LSP root wrong-type error '$expectedError', got: $($wrongTypeLspRootResult.errors -join '; ')"
-  }
-}
+  Assert-HasError -Result $wrongTypeLspRootResult -Path 'lsp.lspServers' -Code 'invalid-type' -Message 'lsp.lspServers must be an object'
+  Assert-HasError -Result $wrongTypeLspRootResult `
+    -Path 'profiles.lspGroups.docs[0]' `
+    -Code 'unknown-reference' `
+    -Message "profiles.lspGroups.docs[0] references unknown LSP server 'Count' for profile 'default'"
 
 @'
 {
@@ -273,24 +309,110 @@ foreach ($expectedError in @(
 }
 '@ | Set-Content -Path $fixtureProfilesPath -Encoding utf8
 
-$wrongTypeProfileResult = & $scriptPath `
-  -ProfilesPath $fixtureProfilesPath `
-  -LocalMcpPath $fixtureLocalMcpPath `
-  -RemoteMcpPath $fixtureRemoteMcpPath `
-  -LspPath $fixtureLspPath | ConvertFrom-Json
+  $wrongTypeProfileResult = & $scriptPath `
+    -ProfilesPath $fixtureProfilesPath `
+    -LocalMcpPath $fixtureLocalMcpPath `
+    -RemoteMcpPath $fixtureRemoteMcpPath `
+    -LspPath $fixtureLspPath | ConvertFrom-Json
 
-if ('profiles.profiles.default must be an object' -notin $wrongTypeProfileResult.errors) {
-  throw "Expected wrong-type profile validation error, got: $($wrongTypeProfileResult.errors -join '; ')"
-}
+  Assert-HasError -Result $wrongTypeProfileResult -Path 'profiles.profiles.default' -Code 'invalid-type' -Message 'profiles.profiles.default must be an object'
+  Assert-NoErrorMessageLike -Result $wrongTypeProfileResult -Pattern 'profiles\.profiles\.default\.(mcpGroups|lspGroups)' -Context 'Wrong-type profile fixture'
 
-foreach ($unexpectedError in @(
-  "Profile 'default' is missing mcpGroups",
-  "Profile 'default' is missing lspGroups"
-)) {
-  if ($unexpectedError -in $wrongTypeProfileResult.errors) {
-    throw "Wrong-type profile fixture should stop before nested validation, got: $($wrongTypeProfileResult.errors -join '; ')"
+@'
+{
+  "profiles": {
+    "default": {
+      "description": "fixture",
+      "mcpGroups": "core-local",
+      "lspGroups": {}
+    }
+  },
+  "mcpGroups": {
+    "core-local": ["memory"]
+  },
+  "lspGroups": {
+    "docs": ["typescript"]
   }
 }
+'@ | Set-Content -Path $fixtureProfilesPath -Encoding utf8
+
+@'
+{
+  "mcpServers": {
+    "memory": {}
+  }
+}
+'@ | Set-Content -Path $fixtureLocalMcpPath -Encoding utf8
+
+@'
+{
+  "mcpServers": {}
+}
+'@ | Set-Content -Path $fixtureRemoteMcpPath -Encoding utf8
+
+@'
+{
+  "lspServers": {
+    "typescript": {}
+  }
+}
+'@ | Set-Content -Path $fixtureLspPath -Encoding utf8
+
+  $wrongTypeProfileGroupsResult = & $scriptPath `
+    -ProfilesPath $fixtureProfilesPath `
+    -LocalMcpPath $fixtureLocalMcpPath `
+    -RemoteMcpPath $fixtureRemoteMcpPath `
+    -LspPath $fixtureLspPath | ConvertFrom-Json
+
+  Assert-HasError -Result $wrongTypeProfileGroupsResult `
+    -Path 'profiles.profiles.default.mcpGroups' `
+    -Code 'invalid-type' `
+    -Message 'profiles.profiles.default.mcpGroups must be an array of strings'
+
+  Assert-HasError -Result $wrongTypeProfileGroupsResult `
+    -Path 'profiles.profiles.default.lspGroups' `
+    -Code 'invalid-type' `
+    -Message 'profiles.profiles.default.lspGroups must be an array of strings'
+
+  Assert-NoErrorMessageLike -Result $wrongTypeProfileGroupsResult -Pattern 'unknown (MCP|LSP) group' -Context 'Wrong-type profile group fixture'
+
+@'
+{
+  "profiles": {
+    "default": {
+      "description": "fixture",
+      "mcpGroups": ["core-local"],
+      "lspGroups": ["docs"]
+    }
+  },
+  "mcpGroups": {
+    "core-local": "memory"
+  },
+  "lspGroups": {
+    "docs": {
+      "primary": "typescript"
+    }
+  }
+}
+'@ | Set-Content -Path $fixtureProfilesPath -Encoding utf8
+
+  $wrongTypeGroupNodesResult = & $scriptPath `
+    -ProfilesPath $fixtureProfilesPath `
+    -LocalMcpPath $fixtureLocalMcpPath `
+    -RemoteMcpPath $fixtureRemoteMcpPath `
+    -LspPath $fixtureLspPath | ConvertFrom-Json
+
+  Assert-HasError -Result $wrongTypeGroupNodesResult `
+    -Path 'profiles.mcpGroups.core-local' `
+    -Code 'invalid-type' `
+    -Message 'profiles.mcpGroups.core-local must be an array of strings'
+
+  Assert-HasError -Result $wrongTypeGroupNodesResult `
+    -Path 'profiles.lspGroups.docs' `
+    -Code 'invalid-type' `
+    -Message 'profiles.lspGroups.docs must be an array of strings'
+
+  Assert-NoErrorMessageLike -Result $wrongTypeGroupNodesResult -Pattern 'unknown (MCP|LSP) server' -Context 'Wrong-type group-node fixture'
 }
 finally {
   if (Test-Path $fixtureRoot) {
