@@ -59,6 +59,44 @@ function Assert-NoErrorMessageLike {
   }
 }
 
+function Assert-SequenceEqual {
+  param(
+    [string[]]$Actual,
+    [string[]]$Expected,
+    [string]$Context
+  )
+
+  $actualItems = @($Actual)
+  $expectedItems = @($Expected)
+  if ($actualItems.Count -ne $expectedItems.Count) {
+    throw "$Context count mismatch. Expected $($expectedItems.Count), got $($actualItems.Count): actual=[$($actualItems -join ', ')] expected=[$($expectedItems -join ', ')]"
+  }
+
+  for ($index = 0; $index -lt $expectedItems.Count; $index++) {
+    if ($actualItems[$index] -ne $expectedItems[$index]) {
+      throw "$Context mismatch at index $index. Expected '$($expectedItems[$index])', got '$($actualItems[$index])'. actual=[$($actualItems -join ', ')] expected=[$($expectedItems -join ', ')]"
+    }
+  }
+}
+
+function Get-ProfileResolution {
+  param(
+    $Result,
+    [string]$ProfileName
+  )
+
+  if ($null -eq $Result.profileResolutions) {
+    throw "Expected profileResolutions in diagnostics output"
+  }
+
+  $resolution = $Result.profileResolutions.$ProfileName
+  if ($null -eq $resolution) {
+    throw "Expected profileResolutions.$ProfileName in diagnostics output"
+  }
+
+  return $resolution
+}
+
 $result = & $scriptPath | ConvertFrom-Json
 
 if ($result.profileCount -ne 3) {
@@ -76,6 +114,15 @@ foreach ($lspName in @('json', 'yaml', 'go', 'java', 'rust', 'sql')) {
     throw "Missing LSP server '$lspName'"
   }
 }
+
+$defaultProfile = Get-ProfileResolution -Result $result -ProfileName 'default'
+Assert-SequenceEqual -Actual @($defaultProfile.lspGroups) -Expected @('core', 'docs') -Context 'default lspGroups'
+
+$researchProfile = Get-ProfileResolution -Result $result -ProfileName 'research'
+Assert-SequenceEqual -Actual @($researchProfile.lspGroups) -Expected @('core', 'docs') -Context 'research lspGroups'
+
+$heavyProfile = Get-ProfileResolution -Result $result -ProfileName 'heavy'
+Assert-SequenceEqual -Actual @($heavyProfile.lspGroups) -Expected @('core', 'docs', 'systems', 'enterprise', 'data') -Context 'heavy lspGroups'
 
 if ($result.errorCount -ne 0) {
   throw "Expected errorCount 0, got $($result.errorCount): $(Format-Errors -Result $result)"

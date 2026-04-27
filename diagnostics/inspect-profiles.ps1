@@ -149,6 +149,19 @@ function Get-RequiredStringArray {
   return ,@($value)
 }
 
+function Add-UniqueItems {
+  param(
+    [System.Collections.Generic.List[string]]$Target,
+    [string[]]$Items
+  )
+
+  foreach ($item in @($Items)) {
+    if ($item -notin $Target) {
+      $null = $Target.Add($item)
+    }
+  }
+}
+
 $profilesRoot = Get-PropertyValue -Object $profiles -Name 'profiles'
 $mcpGroupsRoot = Get-PropertyValue -Object $profiles -Name 'mcpGroups'
 $lspGroupsRoot = Get-PropertyValue -Object $profiles -Name 'lspGroups'
@@ -219,6 +232,7 @@ $mcpGroupNames = @(Get-PropertyNames -Object $mcpGroupsRoot)
 $lspGroupNames = @(Get-PropertyNames -Object $lspGroupsRoot)
 $validMcpGroups = @{}
 $validLspGroups = @{}
+$profileResolutions = [ordered]@{}
 
 foreach ($groupName in $mcpGroupNames) {
   $groupPath = "profiles.mcpGroups.$groupName"
@@ -255,6 +269,15 @@ foreach ($profileName in $profileNames) {
 
   $profileMcpGroups = Get-RequiredStringArray -Object $profile -PropertyName 'mcpGroups' -Path "$profilePath.mcpGroups"
   $profileLspGroups = Get-RequiredStringArray -Object $profile -PropertyName 'lspGroups' -Path "$profilePath.lspGroups"
+  $resolvedMcpServers = New-Object System.Collections.Generic.List[string]
+  $resolvedLspServers = New-Object System.Collections.Generic.List[string]
+
+  $profileResolutions[$profileName] = [ordered]@{
+    mcpGroups = if ($null -eq $profileMcpGroups) { @() } else { @($profileMcpGroups) }
+    lspGroups = if ($null -eq $profileLspGroups) { @() } else { @($profileLspGroups) }
+    mcpServers = @()
+    lspServers = @()
+  }
 
   if ($null -ne $profileMcpGroups -and $null -ne $mcpGroupsRoot) {
     for ($groupIndex = 0; $groupIndex -lt $profileMcpGroups.Count; $groupIndex++) {
@@ -268,6 +291,8 @@ foreach ($profileName in $profileNames) {
 
         continue
       }
+
+      Add-UniqueItems -Target $resolvedMcpServers -Items @($validMcpGroups[$groupName])
 
       if (-not $canValidateMcpServerReferences) {
         continue
@@ -298,6 +323,8 @@ foreach ($profileName in $profileNames) {
         continue
       }
 
+      Add-UniqueItems -Target $resolvedLspServers -Items @($validLspGroups[$groupName])
+
       if (-not $canValidateLspServerReferences) {
         continue
       }
@@ -313,12 +340,16 @@ foreach ($profileName in $profileNames) {
       }
     }
   }
+
+  $profileResolutions[$profileName].mcpServers = @($resolvedMcpServers)
+  $profileResolutions[$profileName].lspServers = @($resolvedLspServers)
 }
 
 [ordered]@{
   profileCount = $profileNames.Count
   profileNames = $profileNames
+  profileResolutions = $profileResolutions
   lspNames = $knownLspServerNames
   errorCount = $errors.Count
   errors = $errors
-} | ConvertTo-Json -Depth 6 -Compress
+} | ConvertTo-Json -Depth 8 -Compress
