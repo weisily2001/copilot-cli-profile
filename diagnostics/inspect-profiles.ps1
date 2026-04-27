@@ -59,6 +59,12 @@ function Get-PropertyNames {
   return @($Object.PSObject.Properties.Name)
 }
 
+function Test-IsJsonObject {
+  param($Value)
+
+  return $null -ne $Value -and ($Value -is [pscustomobject] -or $Value -is [System.Collections.IDictionary])
+}
+
 $profiles = Read-JsonFile -Path $ProfilesPath
 $localMcp = Read-JsonFile -Path $LocalMcpPath
 $remoteMcp = Read-JsonFile -Path $RemoteMcpPath
@@ -71,18 +77,29 @@ $lspGroupsRoot = Get-PropertyValue -Object $profiles -Name 'lspGroups'
 $localMcpServers = Get-PropertyValue -Object $localMcp -Name 'mcpServers'
 $remoteMcpServers = Get-PropertyValue -Object $remoteMcp -Name 'mcpServers'
 $lspServers = Get-PropertyValue -Object $lsp -Name 'lspServers'
-$profileNames = Get-PropertyNames -Object $profilesRoot
 $lspServerNames = Get-PropertyNames -Object $lspServers
 $knownMcpServerNames = @(Get-PropertyNames -Object $localMcpServers) + @(Get-PropertyNames -Object $remoteMcpServers)
 
 if ($null -eq $profilesRoot) {
   $errors.Add('Missing profiles.profiles')
 }
+elseif (-not (Test-IsJsonObject -Value $profilesRoot)) {
+  $errors.Add('profiles.profiles must be an object')
+  $profilesRoot = $null
+}
 if ($null -eq $mcpGroupsRoot) {
   $errors.Add('Missing profiles.mcpGroups')
 }
+elseif (-not (Test-IsJsonObject -Value $mcpGroupsRoot)) {
+  $errors.Add('profiles.mcpGroups must be an object')
+  $mcpGroupsRoot = $null
+}
 if ($null -eq $lspGroupsRoot) {
   $errors.Add('Missing profiles.lspGroups')
+}
+elseif (-not (Test-IsJsonObject -Value $lspGroupsRoot)) {
+  $errors.Add('profiles.lspGroups must be an object')
+  $lspGroupsRoot = $null
 }
 if ($null -eq $localMcpServers) {
   $errors.Add('Missing local mcpServers')
@@ -94,8 +111,16 @@ if ($null -eq $lspServers) {
   $errors.Add('Missing lspServers')
 }
 
+$profileNames = Get-PropertyNames -Object $profilesRoot
+
 foreach ($profileName in $profileNames) {
   $profile = Get-PropertyValue -Object $profilesRoot -Name $profileName
+
+  if (-not (Test-IsJsonObject -Value $profile)) {
+    $errors.Add("profiles.profiles.$profileName must be an object")
+    continue
+  }
+
   $profileMcpGroups = Get-PropertyValue -Object $profile -Name 'mcpGroups'
   $profileLspGroups = Get-PropertyValue -Object $profile -Name 'lspGroups'
 

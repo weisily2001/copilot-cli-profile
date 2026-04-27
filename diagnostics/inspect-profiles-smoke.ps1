@@ -126,6 +126,71 @@ foreach ($expectedError in @(
     throw "Expected schema validation error '$expectedError', got: $($schemaResult.errors -join '; ')"
   }
 }
+
+@'
+{
+  "profiles": ["wrong"],
+  "mcpGroups": ["wrong"],
+  "lspGroups": ["wrong"]
+}
+'@ | Set-Content -Path $fixtureProfilesPath -Encoding utf8
+
+$wrongTypeRootResult = & $scriptPath `
+  -ProfilesPath $fixtureProfilesPath `
+  -LocalMcpPath $fixtureLocalMcpPath `
+  -RemoteMcpPath $fixtureRemoteMcpPath `
+  -LspPath $fixtureLspPath | ConvertFrom-Json
+
+foreach ($expectedError in @(
+  'profiles.profiles must be an object',
+  'profiles.mcpGroups must be an object',
+  'profiles.lspGroups must be an object'
+)) {
+  if ($expectedError -notin $wrongTypeRootResult.errors) {
+    throw "Expected wrong-type validation error '$expectedError', got: $($wrongTypeRootResult.errors -join '; ')"
+  }
+}
+
+if ($wrongTypeRootResult.profileCount -ne 0) {
+  throw "Expected wrong-type root fixture to expose 0 profiles, got $($wrongTypeRootResult.profileCount)"
+}
+
+if ($wrongTypeRootResult.profileNames.Count -ne 0) {
+  throw "Expected wrong-type root fixture to avoid bogus profile names, got: $($wrongTypeRootResult.profileNames -join ', ')"
+}
+
+if (($wrongTypeRootResult.errors -join '; ') -match "'(Length|LongLength|Rank|SyncRoot|IsReadOnly|IsFixedSize|IsSynchronized|Count)'") {
+  throw "Wrong-type root fixture should not report array metadata as profile names: $($wrongTypeRootResult.errors -join '; ')"
+}
+
+@'
+{
+  "profiles": {
+    "default": ["wrong"]
+  },
+  "mcpGroups": {},
+  "lspGroups": {}
+}
+'@ | Set-Content -Path $fixtureProfilesPath -Encoding utf8
+
+$wrongTypeProfileResult = & $scriptPath `
+  -ProfilesPath $fixtureProfilesPath `
+  -LocalMcpPath $fixtureLocalMcpPath `
+  -RemoteMcpPath $fixtureRemoteMcpPath `
+  -LspPath $fixtureLspPath | ConvertFrom-Json
+
+if ('profiles.profiles.default must be an object' -notin $wrongTypeProfileResult.errors) {
+  throw "Expected wrong-type profile validation error, got: $($wrongTypeProfileResult.errors -join '; ')"
+}
+
+foreach ($unexpectedError in @(
+  "Profile 'default' is missing mcpGroups",
+  "Profile 'default' is missing lspGroups"
+)) {
+  if ($unexpectedError -in $wrongTypeProfileResult.errors) {
+    throw "Wrong-type profile fixture should stop before nested validation, got: $($wrongTypeProfileResult.errors -join '; ')"
+  }
+}
 }
 finally {
   if (Test-Path $fixtureRoot) {
