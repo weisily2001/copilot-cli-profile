@@ -49,6 +49,19 @@ function Get-PropertyValue {
   return $property.Value
 }
 
+function Test-HasProperty {
+  param(
+    $Object,
+    [string]$Name
+  )
+
+  if ($null -eq $Object) {
+    return $false
+  }
+
+  return $null -ne $Object.PSObject.Properties[$Name]
+}
+
 function Get-PropertyNames {
   param($Object)
 
@@ -77,41 +90,60 @@ $lspGroupsRoot = Get-PropertyValue -Object $profiles -Name 'lspGroups'
 $localMcpServers = Get-PropertyValue -Object $localMcp -Name 'mcpServers'
 $remoteMcpServers = Get-PropertyValue -Object $remoteMcp -Name 'mcpServers'
 $lspServers = Get-PropertyValue -Object $lsp -Name 'lspServers'
-$lspServerNames = Get-PropertyNames -Object $lspServers
-$knownMcpServerNames = @(Get-PropertyNames -Object $localMcpServers) + @(Get-PropertyNames -Object $remoteMcpServers)
+$hasProfilesRoot = Test-HasProperty -Object $profiles -Name 'profiles'
+$hasMcpGroupsRoot = Test-HasProperty -Object $profiles -Name 'mcpGroups'
+$hasLspGroupsRoot = Test-HasProperty -Object $profiles -Name 'lspGroups'
+$hasLocalMcpServers = Test-HasProperty -Object $localMcp -Name 'mcpServers'
+$hasRemoteMcpServers = Test-HasProperty -Object $remoteMcp -Name 'mcpServers'
+$hasLspServers = Test-HasProperty -Object $lsp -Name 'lspServers'
 
-if ($null -eq $profilesRoot) {
+if (-not $hasProfilesRoot) {
   $errors.Add('Missing profiles.profiles')
 }
 elseif (-not (Test-IsJsonObject -Value $profilesRoot)) {
   $errors.Add('profiles.profiles must be an object')
   $profilesRoot = $null
 }
-if ($null -eq $mcpGroupsRoot) {
+if (-not $hasMcpGroupsRoot) {
   $errors.Add('Missing profiles.mcpGroups')
 }
 elseif (-not (Test-IsJsonObject -Value $mcpGroupsRoot)) {
   $errors.Add('profiles.mcpGroups must be an object')
   $mcpGroupsRoot = $null
 }
-if ($null -eq $lspGroupsRoot) {
+if (-not $hasLspGroupsRoot) {
   $errors.Add('Missing profiles.lspGroups')
 }
 elseif (-not (Test-IsJsonObject -Value $lspGroupsRoot)) {
   $errors.Add('profiles.lspGroups must be an object')
   $lspGroupsRoot = $null
 }
-if ($null -eq $localMcpServers) {
+if (-not $hasLocalMcpServers) {
   $errors.Add('Missing local mcpServers')
 }
-if ($null -eq $remoteMcpServers) {
+elseif (-not (Test-IsJsonObject -Value $localMcpServers)) {
+  $errors.Add('localMcp.mcpServers must be an object')
+  $localMcpServers = $null
+}
+if (-not $hasRemoteMcpServers) {
   $errors.Add('Missing remote mcpServers')
 }
-if ($null -eq $lspServers) {
+elseif (-not (Test-IsJsonObject -Value $remoteMcpServers)) {
+  $errors.Add('remoteMcp.mcpServers must be an object')
+  $remoteMcpServers = $null
+}
+if (-not $hasLspServers) {
   $errors.Add('Missing lspServers')
 }
+elseif (-not (Test-IsJsonObject -Value $lspServers)) {
+  $errors.Add('lsp.lspServers must be an object')
+  $lspServers = $null
+}
 
-$profileNames = Get-PropertyNames -Object $profilesRoot
+$lspServerNames = @(Get-PropertyNames -Object $lspServers)
+$knownMcpServerNames = @(Get-PropertyNames -Object $localMcpServers) + @(Get-PropertyNames -Object $remoteMcpServers)
+
+$profileNames = @(Get-PropertyNames -Object $profilesRoot)
 
 foreach ($profileName in $profileNames) {
   $profile = Get-PropertyValue -Object $profilesRoot -Name $profileName
@@ -136,7 +168,7 @@ foreach ($profileName in $profileNames) {
       continue
     }
 
-    if (-not (Get-PropertyNames -Object $mcpGroupsRoot).Contains($groupName)) {
+    if (-not (@(Get-PropertyNames -Object $mcpGroupsRoot).Contains($groupName))) {
       $errors.Add("Unknown MCP group '$groupName' in profile '$profileName'")
       continue
     }
@@ -153,7 +185,7 @@ foreach ($profileName in $profileNames) {
       continue
     }
 
-    if (-not (Get-PropertyNames -Object $lspGroupsRoot).Contains($groupName)) {
+    if (-not (@(Get-PropertyNames -Object $lspGroupsRoot).Contains($groupName))) {
       $errors.Add("Unknown LSP group '$groupName' in profile '$profileName'")
       continue
     }

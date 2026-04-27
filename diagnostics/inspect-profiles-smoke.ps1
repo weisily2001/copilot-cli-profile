@@ -166,6 +166,106 @@ if (($wrongTypeRootResult.errors -join '; ') -match "'(Length|LongLength|Rank|Sy
 @'
 {
   "profiles": {
+    "default": {
+      "description": "fixture",
+      "mcpGroups": ["core-local"],
+      "lspGroups": ["docs"]
+    }
+  },
+  "mcpGroups": {
+    "core-local": ["Length"]
+  },
+  "lspGroups": {
+    "docs": ["typescript"]
+  }
+}
+'@ | Set-Content -Path $fixtureProfilesPath -Encoding utf8
+
+@'
+{
+  "mcpServers": []
+}
+'@ | Set-Content -Path $fixtureLocalMcpPath -Encoding utf8
+
+@'
+{
+  "mcpServers": {}
+}
+'@ | Set-Content -Path $fixtureRemoteMcpPath -Encoding utf8
+
+@'
+{
+  "lspServers": {
+    "typescript": {}
+  }
+}
+'@ | Set-Content -Path $fixtureLspPath -Encoding utf8
+
+$wrongTypeMcpRootResult = & $scriptPath `
+  -ProfilesPath $fixtureProfilesPath `
+  -LocalMcpPath $fixtureLocalMcpPath `
+  -RemoteMcpPath $fixtureRemoteMcpPath `
+  -LspPath $fixtureLspPath | ConvertFrom-Json
+
+foreach ($expectedError in @(
+  'localMcp.mcpServers must be an object',
+  "Unknown MCP server 'Length' in group 'core-local' for profile 'default'"
+)) {
+  if ($expectedError -notin $wrongTypeMcpRootResult.errors) {
+    throw "Expected MCP root wrong-type error '$expectedError', got: $($wrongTypeMcpRootResult.errors -join '; ')"
+  }
+}
+
+@'
+{
+  "profiles": {
+    "default": {
+      "description": "fixture",
+      "mcpGroups": ["core-local"],
+      "lspGroups": ["docs"]
+    }
+  },
+  "mcpGroups": {
+    "core-local": ["memory"]
+  },
+  "lspGroups": {
+    "docs": ["Count"]
+  }
+}
+'@ | Set-Content -Path $fixtureProfilesPath -Encoding utf8
+
+@'
+{
+  "mcpServers": {
+    "memory": {}
+  }
+}
+'@ | Set-Content -Path $fixtureLocalMcpPath -Encoding utf8
+
+@'
+{
+  "lspServers": []
+}
+'@ | Set-Content -Path $fixtureLspPath -Encoding utf8
+
+$wrongTypeLspRootResult = & $scriptPath `
+  -ProfilesPath $fixtureProfilesPath `
+  -LocalMcpPath $fixtureLocalMcpPath `
+  -RemoteMcpPath $fixtureRemoteMcpPath `
+  -LspPath $fixtureLspPath | ConvertFrom-Json
+
+foreach ($expectedError in @(
+  'lsp.lspServers must be an object',
+  "Unknown LSP server 'Count' in group 'docs' for profile 'default'"
+)) {
+  if ($expectedError -notin $wrongTypeLspRootResult.errors) {
+    throw "Expected LSP root wrong-type error '$expectedError', got: $($wrongTypeLspRootResult.errors -join '; ')"
+  }
+}
+
+@'
+{
+  "profiles": {
     "default": ["wrong"]
   },
   "mcpGroups": {},
