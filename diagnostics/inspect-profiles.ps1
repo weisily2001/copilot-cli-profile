@@ -210,6 +210,8 @@ elseif (-not (Test-IsJsonObject -Value $lspServers)) {
   $lspServers = $null
 }
 
+$canValidateMcpServerReferences = $null -ne $localMcpServers -and $null -ne $remoteMcpServers
+$canValidateLspServerReferences = $null -ne $lspServers
 $knownMcpServerNames = @(Get-PropertyNames -Object $localMcpServers) + @(Get-PropertyNames -Object $remoteMcpServers)
 $knownLspServerNames = @(Get-PropertyNames -Object $lspServers)
 $profileNames = @(Get-PropertyNames -Object $profilesRoot)
@@ -267,6 +269,10 @@ foreach ($profileName in $profileNames) {
         continue
       }
 
+      if (-not $canValidateMcpServerReferences) {
+        continue
+      }
+
       $serverNames = @($validMcpGroups[$groupName])
       for ($serverIndex = 0; $serverIndex -lt $serverNames.Count; $serverIndex++) {
         $serverName = $serverNames[$serverIndex]
@@ -289,6 +295,10 @@ foreach ($profileName in $profileNames) {
           Add-ValidationError -Path $groupReferencePath -Code 'unknown-reference' -Message "$groupReferencePath references unknown LSP group '$groupName'"
         }
 
+        continue
+      }
+
+      if (-not $canValidateLspServerReferences) {
         continue
       }
 

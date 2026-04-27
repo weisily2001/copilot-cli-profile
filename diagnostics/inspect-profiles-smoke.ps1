@@ -250,10 +250,48 @@ try {
     -LspPath $fixtureLspPath | ConvertFrom-Json
 
   Assert-HasError -Result $wrongTypeMcpRootResult -Path 'localMcp.mcpServers' -Code 'invalid-type' -Message 'localMcp.mcpServers must be an object'
-  Assert-HasError -Result $wrongTypeMcpRootResult `
-    -Path 'profiles.mcpGroups.core-local[0]' `
-    -Code 'unknown-reference' `
-    -Message "profiles.mcpGroups.core-local[0] references unknown MCP server 'Length' for profile 'default'"
+  Assert-NoErrorMessageLike -Result $wrongTypeMcpRootResult -Pattern 'unknown MCP server' -Context 'Wrong-type local MCP root fixture'
+
+@'
+{
+  "profiles": {
+    "default": {
+      "description": "fixture",
+      "mcpGroups": ["core-local"],
+      "lspGroups": ["docs"]
+    }
+  },
+  "mcpGroups": {
+    "core-local": ["remote-memory"]
+  },
+  "lspGroups": {
+    "docs": ["typescript"]
+  }
+}
+'@ | Set-Content -Path $fixtureProfilesPath -Encoding utf8
+
+@'
+{
+  "mcpServers": {
+    "memory": {}
+  }
+}
+'@ | Set-Content -Path $fixtureLocalMcpPath -Encoding utf8
+
+@'
+{
+  "mcpServers": []
+}
+'@ | Set-Content -Path $fixtureRemoteMcpPath -Encoding utf8
+
+  $wrongTypeRemoteMcpRootResult = & $scriptPath `
+    -ProfilesPath $fixtureProfilesPath `
+    -LocalMcpPath $fixtureLocalMcpPath `
+    -RemoteMcpPath $fixtureRemoteMcpPath `
+    -LspPath $fixtureLspPath | ConvertFrom-Json
+
+  Assert-HasError -Result $wrongTypeRemoteMcpRootResult -Path 'remoteMcp.mcpServers' -Code 'invalid-type' -Message 'remoteMcp.mcpServers must be an object'
+  Assert-NoErrorMessageLike -Result $wrongTypeRemoteMcpRootResult -Pattern 'unknown MCP server' -Context 'Wrong-type remote MCP root fixture'
 
 @'
 {
@@ -294,10 +332,7 @@ try {
     -LspPath $fixtureLspPath | ConvertFrom-Json
 
   Assert-HasError -Result $wrongTypeLspRootResult -Path 'lsp.lspServers' -Code 'invalid-type' -Message 'lsp.lspServers must be an object'
-  Assert-HasError -Result $wrongTypeLspRootResult `
-    -Path 'profiles.lspGroups.docs[0]' `
-    -Code 'unknown-reference' `
-    -Message "profiles.lspGroups.docs[0] references unknown LSP server 'Count' for profile 'default'"
+  Assert-NoErrorMessageLike -Result $wrongTypeLspRootResult -Pattern 'unknown LSP server' -Context 'Wrong-type LSP root fixture'
 
 @'
 {
