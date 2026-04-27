@@ -318,6 +318,7 @@ foreach ($profileName in $profileNames) {
 [ordered]@{
   profileCount = $profileNames.Count
   profileNames = $profileNames
+  lspNames = $knownLspServerNames
   errorCount = $errors.Count
   errors = $errors
 } | ConvertTo-Json -Depth 6 -Compress

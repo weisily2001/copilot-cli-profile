@@ -71,6 +71,12 @@ foreach ($profileName in @('default', 'research', 'heavy')) {
   }
 }
 
+foreach ($lspName in @('json', 'yaml', 'go', 'java', 'rust', 'sql')) {
+  if ($lspName -notin @($result.lspNames)) {
+    throw "Missing LSP server '$lspName'"
+  }
+}
+
 if ($result.errorCount -ne 0) {
   throw "Expected errorCount 0, got $($result.errorCount): $(Format-Errors -Result $result)"
 }
