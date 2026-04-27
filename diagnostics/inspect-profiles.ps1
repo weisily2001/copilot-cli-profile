@@ -38,6 +38,7 @@ $lsp = Read-JsonFile -Path $LspPath
 
 $errors = New-Object System.Collections.Generic.List[string]
 $profileNames = @($profiles.profiles.PSObject.Properties.Name)
+$lspServerNames = @($lsp.lspServers.PSObject.Properties.Name)
 
 if ($null -eq $localMcp.mcpServers) {
   $errors.Add('Missing local mcpServers')
@@ -61,6 +62,13 @@ foreach ($profileName in $profileNames) {
   foreach ($groupName in @($profile.lspGroups)) {
     if (-not $profiles.lspGroups.PSObject.Properties.Name.Contains($groupName)) {
       $errors.Add("Unknown LSP group '$groupName' in profile '$profileName'")
+      continue
+    }
+
+    foreach ($serverName in @($profiles.lspGroups.$groupName)) {
+      if (-not $lspServerNames.Contains($serverName)) {
+        $errors.Add("Unknown LSP server '$serverName' in group '$groupName' for profile '$profileName'")
+      }
     }
   }
 }
