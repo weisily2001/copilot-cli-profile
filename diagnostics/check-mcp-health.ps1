@@ -8,7 +8,6 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
-$copilotHome = Join-Path $HOME '.copilot'
 
 if ([string]::IsNullOrWhiteSpace($LocalMcpPath)) {
   $LocalMcpPath = Join-Path $repoRoot 'mcp-config.json'
@@ -17,10 +16,10 @@ if ([string]::IsNullOrWhiteSpace($RemoteMcpPath)) {
   $RemoteMcpPath = Join-Path $repoRoot 'mcp-config.remote.json'
 }
 if ([string]::IsNullOrWhiteSpace($RulesPath)) {
-  $RulesPath = Join-Path $copilotHome 'mcp-health-rules.json'
+  $RulesPath = Join-Path $repoRoot 'mcp-health-rules.json'
 }
 if ([string]::IsNullOrWhiteSpace($OutputPath)) {
-  $OutputPath = Join-Path $copilotHome 'mcp-health.json'
+  $OutputPath = Join-Path $repoRoot 'mcp-health.json'
 }
 
 function Read-JsonFile {
@@ -102,7 +101,7 @@ function Get-SuggestedAction {
     return Get-StringValue -Object $defaults -Name 'remoteSkippedAction'
   }
 
-  if ($ServerKind -eq 'remote' -and $Status -eq 'failed') {
+  if ($ServerKind -eq 'remote' -and $Status -eq 'unavailable') {
     return Get-StringValue -Object $defaults -Name 'remoteFailedAction'
   }
 
@@ -187,7 +186,7 @@ function Test-RemoteEndpoint {
   }
   catch {
     $sw.Stop()
-    return New-HealthResult -Name $Name -Type 'remote' -Status 'failed' -LatencyMs $sw.ElapsedMilliseconds -CheckedAt $checkedAt -Error $_.Exception.Message -SuggestedAction (Get-SuggestedAction -Name $Name -Status 'failed' -ServerKind 'remote' -Rules $Rules)
+    return New-HealthResult -Name $Name -Type 'remote' -Status 'unavailable' -LatencyMs $sw.ElapsedMilliseconds -CheckedAt $checkedAt -Error $_.Exception.Message -SuggestedAction (Get-SuggestedAction -Name $Name -Status 'unavailable' -ServerKind 'remote' -Rules $Rules)
   }
 }
 

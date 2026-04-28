@@ -18,6 +18,35 @@ git clone https://github.com/weisily2001/copilot-cli-profile.git $HOME\.copilot
 
 首次启动 Copilot CLI 后，程序会自动生成本机自己的 `config.json`。
 
+## Profile 分层
+
+- `profiles.json` 定义 `default`、`research`、`heavy` 三档能力组合
+- `default` 适合日常开发与普通问答
+- `research` 强化资料查询、设计分析和文档查证
+- `heavy` 适合复杂多阶段任务与更完整的语言支持
+- 可通过 `diagnostics\inspect-profiles.ps1` 查看 profile 与 MCP / LSP 引用是否一致
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "C:\Users\HP\.copilot\diagnostics\inspect-profiles.ps1"
+```
+
+## MCP 健康诊断
+
+运行：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "C:\Users\HP\.copilot\diagnostics\check-mcp-health.ps1"
+```
+
+输出：
+
+- 结构化结果会打印到终端
+- 默认写入当前仓库根目录下的 `mcp-health.json`
+- 标准部署到 `C:\Users\HP\.copilot` 时，输出文件位于 `C:\Users\HP\.copilot\mcp-health.json`
+- 使用 `-SkipHttpProbe` 时，远程 MCP 会以 `degraded` 返回，便于离线或快速检查
+
+更多字段说明见 `C:\Users\HP\.copilot\mcp-observability.md`。
+
 ## 更新方式
 
 拉取稳定更新：

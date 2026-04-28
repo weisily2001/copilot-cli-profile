@@ -1,0 +1,15 @@
+﻿{
+  "defaults": {
+    "localMissingAction": "修复本地命令或安装缺失依赖",
+    "remoteSkippedAction": "启用联网探测或回退到本地文档方案",
+    "remoteFailedAction": "检查网络、认证或远端服务状态"
+  },
+  "overrides": {
+    "context7": {
+      "suggestedAction": "回退到 docs.github.com 或本地文档"
+    },
+    "exa": {
+      "suggestedAction": "关闭联网研究增强，仅保留官方文档查询"
+    }
+  }
+}
