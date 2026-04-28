@@ -64,6 +64,11 @@ powershell -ExecutionPolicy Bypass -File "C:\Users\HP\.copilot\diagnostics\measu
 显式传入 `-HookStartPath` 或 `-HookEndPath` 时，可改用测试探针覆盖真实 hook。
 只有在显式传入测试 hook 路径和测试 metrics 路径时，才会同时隔离真实 hook 与真实观测日志。
 
+## 相关文档
+
+- `C:\Users\HP\.copilot\mcp-observability.md`：MCP 健康检查脚本、输出字段与状态定义
+- `C:\Users\HP\.copilot\README.md`：Profile 分层与诊断入口总览
+
 ## 保留策略
 
 - 默认只保留最近 100 条记录
