@@ -3,8 +3,10 @@ logs/
 session-state/
 hook-metrics.jsonl
 startup-metrics.jsonl
+mcp-health.json
 command-history-state.json
 config.json
+permissions-config.json
 memory/project-context-cache.json
 memory/projects/*/last-session.json
 memory/projects/*/project.json
