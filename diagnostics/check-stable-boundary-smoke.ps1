@@ -68,3 +68,4 @@ Assert-PathPatternNotIgnored 'docs/mcp-health.json'
 Assert-PathPatternNotIgnored 'docs/permissions-config.json'
 
 Write-Host 'check-stable-boundary smoke PASS'
+exit 0
