@@ -16,9 +16,17 @@ function Assert-NotIgnored {
     [string]$Path
   )
 
-  $null = & git check-ignore $Path
+  # Ensure the path exists first - existence is required for this smoke test
+  if (-not (Test-Path $Path)) {
+    throw "Expected '$Path' to exist"
+  }
+
+  # git check-ignore returns 0 if ignored, 1 if not ignored, 128 on error
+  $null = & git check-ignore --quiet $Path
   if ($LASTEXITCODE -eq 0) {
-    throw "Expected '$Path' to stay tracked"
+    throw "Expected '$Path' to not be ignored"
+  } elseif ($LASTEXITCODE -eq 128) {
+    throw "git check-ignore failed for '$Path' (exit code 128)"
   }
 }
 
