@@ -11,20 +11,28 @@ function Assert-Ignored {
   }
 }
 
+function Assert-PathExists {
+  param(
+    [string]$Path
+  )
+
+  if (-not (Test-Path $Path)) {
+    throw "Expected existing path '$Path' to exist"
+  }
+}
+
 function Assert-ExistingPathNotIgnored {
   param(
     [string]$Path
   )
 
   # Ensure the path exists first - existence is required for this smoke test
-  if (-not (Test-Path $Path)) {
-    throw "Expected existing path '$Path' to exist and be tracked (not ignored)"
-  }
+  Assert-PathExists $Path
 
-  # git check-ignore returns 0 if ignored, 1 if not ignored, 128 on error
-  $null = & git check-ignore --quiet $Path
+  # Verify path pattern is not ignored by .gitignore (use --no-index to evaluate patterns)
+  $null = & git check-ignore --quiet --no-index $Path 2>$null
   if ($LASTEXITCODE -eq 0) {
-    throw "Expected existing path '$Path' to not be ignored"
+    throw "Expected existing path '$Path' to not be ignored by .gitignore"
   } elseif ($LASTEXITCODE -eq 128) {
     throw "git check-ignore failed for '$Path' (exit code 128)"
   }
@@ -54,5 +62,9 @@ Assert-Ignored 'mcp-health.json'
 Assert-Ignored 'permissions-config.json'
 Assert-PathPatternNotIgnored 'profiles.json'
 Assert-ExistingPathNotIgnored 'docs/superpowers/specs/2026-04-29-copilot-cli-stabilization-design.md'
+
+# Regression checks: ensure .gitignore doesn't mistakenly ignore similarly named files under docs/
+Assert-PathPatternNotIgnored 'docs/mcp-health.json'
+Assert-PathPatternNotIgnored 'docs/permissions-config.json'
 
 Write-Host 'check-stable-boundary smoke PASS'
