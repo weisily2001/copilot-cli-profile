@@ -1,0 +1,28 @@
+{
+  "profiles": {
+    "default": {
+      "description": "Daily development and general questions",
+      "mcpGroups": ["core-local", "core-remote"],
+      "lspGroups": ["core"]
+    },
+    "research": {
+      "description": "Research, analysis, and documentation work",
+      "mcpGroups": ["core-local", "core-remote", "research"],
+      "lspGroups": ["core"]
+    },
+    "heavy": {
+      "description": "Complex multi-stage work enabled on demand",
+      "mcpGroups": ["core-local", "core-remote", "research", "browser"],
+      "lspGroups": ["core"]
+    }
+  },
+  "mcpGroups": {
+    "core-local": ["memory", "sequential-thinking"],
+    "core-remote": ["context7"],
+    "research": ["exa"],
+    "browser": ["playwright"]
+  },
+  "lspGroups": {
+    "core": ["typescript", "python"]
+  }
+}

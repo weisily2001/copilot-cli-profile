@@ -2,7 +2,6 @@
   "allowedUrls": [
     "https://docs.github.com"
   ],
-  "model": "Auto",
   "renderMarkdown": true,
   "respectGitignore": true,
   "includeCoAuthoredBy": true,

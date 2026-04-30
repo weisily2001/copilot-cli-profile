@@ -34,6 +34,13 @@ Set-Location $HOME\.copilot
 git checkout -b feat/update-profile
 ```
 
+## 稳定使用建议
+
+- 日常默认使用 `default`
+- 做资料查证、方案分析和文档研究时使用 `research`
+- `heavy` 只在复杂多阶段任务时按需启用，不作为日常默认面
+- 以下文件属于运行态或本机态，不纳入稳定主线：`config.json`、`permissions-config.json`、`hook-metrics.jsonl`、`startup-metrics.jsonl`、`mcp-health.json`
+
 ## 回滚方式
 
 查看可回滚标签：
