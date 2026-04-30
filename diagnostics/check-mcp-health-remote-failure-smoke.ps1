@@ -52,13 +52,18 @@ function Invoke-HealthScript {
 
 function Assert-RemoteFailureNormalized {
   param(
-    $Health
+    $Health,
+    [string]$ExpectedSuggestedAction
   )
 
   $result = Get-ResultByName -Health $Health -Name 'context7'
   if ($result.status -ne 'unavailable') {
     throw "Expected remote failure to normalize to unavailable, got '$($result.status)'"
   }
+
+   if ($result.suggestedAction -ne $ExpectedSuggestedAction) {
+     throw "Expected remote failure suggestedAction '$ExpectedSuggestedAction', got '$($result.suggestedAction)'"
+   }
 
   return $result
 }
@@ -93,13 +98,16 @@ try {
   if ($brokenResult.status -ne 'degraded') {
     throw "Expected broken remote failure status to stay degraded, got '$($brokenResult.status)'"
   }
+  if ($brokenResult.suggestedAction -ne 'skip remote') {
+    throw "Expected broken remote failure suggestedAction to map degraded status to remoteSkippedAction, got '$($brokenResult.suggestedAction)'"
+  }
 
   Assert-Rejects -Name 'broken remote failure normalization' {
-    Assert-RemoteFailureNormalized -Health $brokenHealth | Out-Null
+    Assert-RemoteFailureNormalized -Health $brokenHealth -ExpectedSuggestedAction 'check remote' | Out-Null
   }
 
   $health = Invoke-HealthScript -CandidateScriptPath $scriptPath
-  Assert-RemoteFailureNormalized -Health $health | Out-Null
+  Assert-RemoteFailureNormalized -Health $health -ExpectedSuggestedAction 'check remote' | Out-Null
 }
 finally {
   if (Test-Path $fixtureRoot) {
