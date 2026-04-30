@@ -18,6 +18,57 @@
       "fileExtensions": {
         ".py": "python"
       }
+    },
+    "json": {
+      "command": "vscode-json-language-server",
+      "args": [
+        "--stdio"
+      ],
+      "fileExtensions": {
+        ".json": "json"
+      }
+    },
+    "yaml": {
+      "command": "yaml-language-server",
+      "args": [
+        "--stdio"
+      ],
+      "fileExtensions": {
+        ".yaml": "yaml",
+        ".yml": "yaml"
+      }
+    },
+    "go": {
+      "command": "gopls",
+      "args": [],
+      "fileExtensions": {
+        ".go": "go"
+      }
+    },
+    "java": {
+      "command": "jdtls",
+      "args": [],
+      "fileExtensions": {
+        ".java": "java"
+      }
+    },
+    "rust": {
+      "command": "rust-analyzer",
+      "args": [],
+      "fileExtensions": {
+        ".rs": "rust"
+      }
+    },
+    "sql": {
+      "command": "sql-language-server",
+      "args": [
+        "up",
+        "--method",
+        "stdio"
+      ],
+      "fileExtensions": {
+        ".sql": "sql"
+      }
     }
   }
 }
