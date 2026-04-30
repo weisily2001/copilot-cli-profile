@@ -1,77 +1,95 @@
 $ErrorActionPreference = 'Stop'
-$sourceScriptPath = Join-Path $PSScriptRoot 'check-mcp-health.ps1'
+$fixtureRoot = Join-Path $PSScriptRoot '_check-mcp-health-default-paths'
+$fixtureDiag = Join-Path $fixtureRoot 'diagnostics'
+$scriptPath = Join-Path $fixtureDiag 'check-mcp-health.ps1'
+$brokenScriptPath = Join-Path $fixtureDiag 'broken-check-mcp-health.ps1'
+$expectedOutput = Join-Path $fixtureRoot 'mcp-health.json'
+$wrongOutput = Join-Path $fixtureDiag 'mcp-health.json'
 
-if (-not (Test-Path $sourceScriptPath)) {
-  throw "Missing script: $sourceScriptPath"
-}
-
-function Assert-True {
+function Assert-Rejects {
   param(
-    [bool]$Condition,
-    [string]$Message
+    [string]$Name,
+    [scriptblock]$Action
   )
 
-  if (-not $Condition) {
-    throw $Message
+  try {
+    & $Action
+  }
+  catch {
+    return
+  }
+
+  throw "Expected failure for '$Name'"
+}
+
+function Invoke-DefaultPathsCase {
+  param(
+    [string]$CandidateScriptPath
+  )
+
+  foreach ($path in @($expectedOutput, $wrongOutput)) {
+    if (Test-Path $path) {
+      Remove-Item -Path $path -Force
+    }
+  }
+
+  & $CandidateScriptPath -SkipHttpProbe | Out-Null
+
+  if (-not (Test-Path $expectedOutput)) {
+    throw "Expected output at $expectedOutput"
+  }
+
+  if ($wrongOutput -ne $expectedOutput -and (Test-Path $wrongOutput)) {
+    throw "Expected no output at $wrongOutput"
   }
 }
 
-$fixtureRoot = Join-Path $env:TEMP 'copilot-mcp-health-default-paths-smoke'
-$repoRoot = Join-Path $fixtureRoot 'repo'
-$diagnosticsRoot = Join-Path $repoRoot 'diagnostics'
-$scriptPath = Join-Path $diagnosticsRoot 'check-mcp-health.ps1'
-$localPath = Join-Path $repoRoot 'mcp-config.json'
-$remotePath = Join-Path $repoRoot 'mcp-config.remote.json'
-$rulesPath = Join-Path $repoRoot 'mcp-health-rules.json'
-$outputPath = Join-Path $repoRoot 'mcp-health.json'
 if (Test-Path $fixtureRoot) {
   Remove-Item -Path $fixtureRoot -Recurse -Force
 }
 
-New-Item -ItemType Directory -Path $diagnosticsRoot -Force | Out-Null
-Copy-Item -Path $sourceScriptPath -Destination $scriptPath
+New-Item -ItemType Directory -Path $fixtureDiag -Force | Out-Null
 
 try {
-  @'
-{
-  "mcpServers": {
-    "local-good": {
-      "type": "local",
-      "command": "powershell"
-    }
+  $sourceScriptPath = Join-Path $PSScriptRoot 'check-mcp-health.ps1'
+  $sourceScript = Get-Content -Path $sourceScriptPath -Raw
+  $brokenScript = $sourceScript.Replace(
+    "  `$OutputPath = Join-Path `$repoRoot 'mcp-health.json'",
+    "  `$OutputPath = Join-Path `$PSScriptRoot 'mcp-health.json'"
+  )
+
+  if ($brokenScript -eq $sourceScript) {
+    throw 'Failed to inject broken default OutputPath behavior'
   }
-}
-'@ | Set-Content -Path $localPath -Encoding UTF8
+
+  $sourceScript | Set-Content -Path $scriptPath -Encoding UTF8
+  $brokenScript | Set-Content -Path $brokenScriptPath -Encoding UTF8
 
   @'
-{
-  "mcpServers": {
-    "remote-skip": {
-      "type": "http",
-      "url": "https://example.invalid/mcp"
-    }
+{"mcpServers":{"memory":{"type":"local","command":"powershell"}}}
+'@ | Set-Content -Path (Join-Path $fixtureRoot 'mcp-config.json') -Encoding UTF8
+
+  @'
+{"mcpServers":{"context7":{"type":"http","url":"https://example.invalid/mcp"}}}
+'@ | Set-Content -Path (Join-Path $fixtureRoot 'mcp-config.remote.json') -Encoding UTF8
+
+  @'
+{"defaults":{"localMissingAction":"fix local","remoteSkippedAction":"skip remote","remoteFailedAction":"check remote"}}
+'@ | Set-Content -Path (Join-Path $fixtureRoot 'mcp-health-rules.json') -Encoding UTF8
+
+  Assert-Rejects -Name 'broken default output path' {
+    Invoke-DefaultPathsCase -CandidateScriptPath $brokenScriptPath
   }
-}
-'@ | Set-Content -Path $remotePath -Encoding UTF8
 
-  @'
-{
-  "defaults": {
-    "localMissingAction": "repair local dependency",
-    "remoteSkippedAction": "skip remote probe",
-    "remoteFailedAction": "check remote service"
-  },
-  "overrides": {}
-}
-'@ | Set-Content -Path $rulesPath -Encoding UTF8
+  if (Test-Path $expectedOutput) {
+    throw "Broken script unexpectedly wrote repo-root output to $expectedOutput"
+  }
 
-  $health = & $scriptPath `
-    -LocalMcpPath $localPath `
-    -RemoteMcpPath $remotePath `
-    -SkipHttpProbe | ConvertFrom-Json
+  if (-not (Test-Path $wrongOutput)) {
+    throw "Broken script did not expose wrong output path at $wrongOutput"
+  }
 
-  Assert-True -Condition ($null -ne $health.generatedAt) -Message 'Missing generatedAt'
-  Assert-True -Condition (Test-Path $outputPath) -Message "Expected output file at repo root: $outputPath"
+  Invoke-DefaultPathsCase -CandidateScriptPath $scriptPath
 }
 finally {
   if (Test-Path $fixtureRoot) {
@@ -79,4 +97,4 @@ finally {
   }
 }
 
-Write-Host 'check-mcp-health default-paths smoke PASS'
+Write-Host 'check-mcp-health default paths smoke PASS'

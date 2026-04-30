@@ -1,19 +1,19 @@
 {
   "profiles": {
     "default": {
-      "description": "\u65e5\u5e38\u5f00\u53d1\u4e0e\u666e\u901a\u95ee\u7b54",
+      "description": "Daily development and general questions",
       "mcpGroups": ["core-local", "core-remote"],
-      "lspGroups": ["core", "docs"]
+      "lspGroups": ["core"]
     },
     "research": {
-      "description": "\u7814\u7a76\u3001\u8bbe\u8ba1\u3001\u67e5\u8bc1\u548c\u6587\u6863\u5206\u6790",
+      "description": "Research, analysis, and documentation work",
       "mcpGroups": ["core-local", "core-remote", "research"],
-      "lspGroups": ["core", "docs"]
+      "lspGroups": ["core"]
     },
     "heavy": {
-      "description": "\u590d\u6742\u591a\u9636\u6bb5\u4efb\u52a1\u3001\u91cd\u578b\u6392\u67e5\u4e0e\u5168\u91cf\u8bed\u8a00\u652f\u6301",
+      "description": "Complex multi-stage work enabled on demand",
       "mcpGroups": ["core-local", "core-remote", "research", "browser"],
-      "lspGroups": ["core", "docs", "systems", "enterprise", "data"]
+      "lspGroups": ["core"]
     }
   },
   "mcpGroups": {
@@ -23,10 +23,6 @@
     "browser": ["playwright"]
   },
   "lspGroups": {
-    "core": ["typescript", "python"],
-    "docs": ["json", "yaml"],
-    "systems": ["go", "rust"],
-    "enterprise": ["java"],
-    "data": ["sql"]
+    "core": ["typescript", "python"]
   }
 }

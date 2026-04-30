@@ -29,7 +29,7 @@ function Read-JsonFile {
     throw "Missing file: $Path"
   }
 
-  return Get-Content -Path $Path -Raw | ConvertFrom-Json
+  Get-Content -Path $Path -Raw -Encoding UTF8 | ConvertFrom-Json
 }
 
 function Get-PropertyValue {
@@ -119,7 +119,7 @@ function New-HealthResult {
     [string]$SuggestedAction
   )
 
-  return [pscustomobject][ordered]@{
+  [pscustomobject][ordered]@{
     name            = $Name
     type            = $Type
     status          = $Status
@@ -180,7 +180,7 @@ function Test-RemoteEndpoint {
       throw "Remote MCP server '$Name' is missing url"
     }
 
-    $null = Invoke-WebRequest -Uri $url -Method Head -UseBasicParsing -TimeoutSec 10
+    $null = Invoke-WebRequest -Uri $url -Method Options -UseBasicParsing -TimeoutSec 10
     $sw.Stop()
     return New-HealthResult -Name $Name -Type 'remote' -Status 'healthy' -LatencyMs $sw.ElapsedMilliseconds -CheckedAt $checkedAt -Error $null -SuggestedAction $null
   }

@@ -1,94 +1,113 @@
 $ErrorActionPreference = 'Stop'
-$scriptPath = Join-Path $PSScriptRoot 'check-mcp-health.ps1'
-
-if (-not (Test-Path $scriptPath)) {
-  throw "Missing script: $scriptPath"
-}
-
-function Assert-Equal {
-  param(
-    $Actual,
-    $Expected,
-    [string]$Message
-  )
-
-  if ($Actual -ne $Expected) {
-    throw "$Message. Expected '$Expected', got '$Actual'"
-  }
-}
-
-function Assert-NotNull {
-  param(
-    $Value,
-    [string]$Message
-  )
-
-  if ($null -eq $Value) {
-    throw $Message
-  }
-
-  if ($Value -is [string] -and [string]::IsNullOrWhiteSpace($Value)) {
-    throw $Message
-  }
-}
-
 $fixtureRoot = Join-Path $PSScriptRoot '_check-mcp-health-remote-failure'
+$fixtureDiag = Join-Path $fixtureRoot 'diagnostics'
+$scriptPath = Join-Path $fixtureDiag 'check-mcp-health.ps1'
+$brokenScriptPath = Join-Path $fixtureDiag 'broken-check-mcp-health.ps1'
 $localPath = Join-Path $fixtureRoot 'mcp-config.json'
 $remotePath = Join-Path $fixtureRoot 'mcp-config.remote.json'
 $rulesPath = Join-Path $fixtureRoot 'mcp-health-rules.json'
 $outputPath = Join-Path $fixtureRoot 'mcp-health.json'
 
+function Assert-Rejects {
+  param(
+    [string]$Name,
+    [scriptblock]$Action
+  )
+
+  try {
+    & $Action
+  }
+  catch {
+    return
+  }
+
+  throw "Expected failure for '$Name'"
+}
+
+function Get-ResultByName {
+  param(
+    $Health,
+    [string]$Name
+  )
+
+  $matches = @($Health.results | Where-Object { $_.name -eq $Name })
+  if ($matches.Count -ne 1) {
+    throw "Expected exactly one result named '$Name', got $($matches.Count)"
+  }
+
+  return $matches[0]
+}
+
+function Invoke-HealthScript {
+  param(
+    [string]$CandidateScriptPath
+  )
+
+  if (Test-Path $outputPath) {
+    Remove-Item -Path $outputPath -Force
+  }
+
+  return & $CandidateScriptPath -LocalMcpPath $localPath -RemoteMcpPath $remotePath -RulesPath $rulesPath -OutputPath $outputPath | ConvertFrom-Json
+}
+
+function Assert-RemoteFailureNormalized {
+  param(
+    $Health,
+    [string]$ExpectedSuggestedAction
+  )
+
+  $result = Get-ResultByName -Health $Health -Name 'context7'
+  if ($result.status -ne 'unavailable') {
+    throw "Expected remote failure to normalize to unavailable, got '$($result.status)'"
+  }
+
+   if ($result.suggestedAction -ne $ExpectedSuggestedAction) {
+     throw "Expected remote failure suggestedAction '$ExpectedSuggestedAction', got '$($result.suggestedAction)'"
+   }
+
+  return $result
+}
+
 if (Test-Path $fixtureRoot) {
   Remove-Item -Path $fixtureRoot -Recurse -Force
 }
 
-New-Item -ItemType Directory -Path $fixtureRoot | Out-Null
+New-Item -ItemType Directory -Path $fixtureDiag -Force | Out-Null
 
 try {
-  @'
-{
-  "mcpServers": {}
-}
-'@ | Set-Content -Path $localPath -Encoding UTF8
+  $sourceScriptPath = Join-Path $PSScriptRoot 'check-mcp-health.ps1'
+  $sourceScript = Get-Content -Path $sourceScriptPath -Raw
+  $brokenScript = $sourceScript.Replace(
+    "    return New-HealthResult -Name `$Name -Type 'remote' -Status 'unavailable' -LatencyMs `$sw.ElapsedMilliseconds -CheckedAt `$checkedAt -Error `$_.Exception.Message -SuggestedAction (Get-SuggestedAction -Name `$Name -Status 'unavailable' -ServerKind 'remote' -Rules `$Rules)",
+    "    return New-HealthResult -Name `$Name -Type 'remote' -Status 'degraded' -LatencyMs `$sw.ElapsedMilliseconds -CheckedAt `$checkedAt -Error `$_.Exception.Message -SuggestedAction (Get-SuggestedAction -Name `$Name -Status 'degraded' -ServerKind 'remote' -Rules `$Rules)"
+  )
 
-  @'
-{
-  "mcpServers": {
-    "remote-bad": {
-      "type": "http",
-      "url": "http://127.0.0.1:9/mcp"
-    }
-  }
-}
-'@ | Set-Content -Path $remotePath -Encoding UTF8
-
-  @'
-{
-  "defaults": {
-    "localMissingAction": "repair local dependency",
-    "remoteSkippedAction": "skip remote probe",
-    "remoteFailedAction": "check remote service"
-  },
-  "overrides": {}
-}
-'@ | Set-Content -Path $rulesPath -Encoding UTF8
-
-  $health = & $scriptPath `
-    -LocalMcpPath $localPath `
-    -RemoteMcpPath $remotePath `
-    -RulesPath $rulesPath `
-    -OutputPath $outputPath | ConvertFrom-Json
-
-  $results = @($health.results | Where-Object { $_.name -eq 'remote-bad' })
-  if ($results.Count -ne 1) {
-    throw "Expected exactly one result named 'remote-bad', got $($results.Count)"
+  if ($brokenScript -eq $sourceScript) {
+    throw 'Failed to inject broken remote failure normalization behavior'
   }
 
-  $remoteBad = $results[0]
-  Assert-Equal -Actual $remoteBad.type -Expected 'remote' -Message 'remote-bad type mismatch'
-  Assert-Equal -Actual $remoteBad.status -Expected 'unavailable' -Message 'remote-bad status mismatch'
-  Assert-Equal -Actual $remoteBad.suggestedAction -Expected 'check remote service' -Message 'remote-bad suggestedAction mismatch'
-  Assert-NotNull -Value $remoteBad.error -Message 'Missing remote-bad error'
+  $sourceScript | Set-Content -Path $scriptPath -Encoding UTF8
+  $brokenScript | Set-Content -Path $brokenScriptPath -Encoding UTF8
+
+  '{"mcpServers":{"memory":{"type":"local","command":"powershell"}}}' | Set-Content -Path $localPath -Encoding UTF8
+  '{"mcpServers":{"context7":{"type":"http","url":"https://example.invalid/mcp"}}}' | Set-Content -Path $remotePath -Encoding UTF8
+  '{"defaults":{"localMissingAction":"fix local","remoteSkippedAction":"skip remote","remoteFailedAction":"check remote"}}' | Set-Content -Path $rulesPath -Encoding UTF8
+
+  $brokenHealth = Invoke-HealthScript -CandidateScriptPath $brokenScriptPath
+  $brokenResult = Get-ResultByName -Health $brokenHealth -Name 'context7'
+  if ($brokenResult.status -ne 'degraded') {
+    throw "Expected broken remote failure status to stay degraded, got '$($brokenResult.status)'"
+  }
+  if ($brokenResult.suggestedAction -ne 'skip remote') {
+    throw "Expected broken remote failure suggestedAction to map degraded status to remoteSkippedAction, got '$($brokenResult.suggestedAction)'"
+  }
+
+  Assert-Rejects -Name 'broken remote failure normalization' {
+    Assert-RemoteFailureNormalized -Health $brokenHealth -ExpectedSuggestedAction 'check remote' | Out-Null
+  }
+
+  $health = Invoke-HealthScript -CandidateScriptPath $scriptPath
+  Assert-RemoteFailureNormalized -Health $health -ExpectedSuggestedAction 'check remote' | Out-Null
 }
 finally {
   if (Test-Path $fixtureRoot) {
@@ -96,4 +115,4 @@ finally {
   }
 }
 
-Write-Host 'check-mcp-health remote-failure smoke PASS'
+Write-Host 'check-mcp-health remote failure smoke PASS'
