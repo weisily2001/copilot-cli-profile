@@ -130,8 +130,8 @@ function Test-StableSettings {
 
   foreach ($hookName in $expectedHooks.Keys) {
     $entries = @($Settings.hooks.$hookName)
-    if ($entries.Count -eq 0) {
-      throw "Hook '$hookName' must contain at least one command entry"
+    if ($entries.Count -ne 1) {
+      throw "Hook '$hookName' must contain exactly one command entry"
     }
 
     for ($index = 0; $index -lt $entries.Count; $index++) {
@@ -162,6 +162,12 @@ function Test-StableProfiles {
     [Parameter(Mandatory)]
     $Profiles
   )
+
+  Assert-ExactSet -Name 'profiles.json top-level keys' -Expected @(
+    'profiles',
+    'mcpGroups',
+    'lspGroups'
+  ) -Actual (@($Profiles.PSObject.Properties | ForEach-Object { [string]$_.Name }))
 
   Assert-ExactSet -Name 'profiles.json profiles' -Expected @(
     'default',
@@ -232,9 +238,21 @@ $settingsWithWrongHookTimeout = Get-JsonClone $settings
 $settingsWithWrongHookTimeout.hooks.sessionStart[0].timeoutSec = 10
 Assert-Rejects 'settings hook timeout drift' { Test-StableSettings $settingsWithWrongHookTimeout }
 
+$settingsWithDuplicateSessionStartHook = Get-JsonClone $settings
+$settingsWithDuplicateSessionStartHook.hooks.sessionStart += (Get-JsonClone $settingsWithDuplicateSessionStartHook.hooks.sessionStart[0])
+Assert-Rejects 'duplicate sessionStart hook entry' { Test-StableSettings $settingsWithDuplicateSessionStartHook }
+
+$settingsWithDuplicateSessionEndHook = Get-JsonClone $settings
+$settingsWithDuplicateSessionEndHook.hooks.sessionEnd += (Get-JsonClone $settingsWithDuplicateSessionEndHook.hooks.sessionEnd[0])
+Assert-Rejects 'duplicate sessionEnd hook entry' { Test-StableSettings $settingsWithDuplicateSessionEndHook }
+
 $profilesWithWrongDefaultMcpGroups = Get-JsonClone $profiles
 $profilesWithWrongDefaultMcpGroups.profiles.default.mcpGroups = @('core-local')
 Assert-Rejects 'default profile mcpGroups drift' { Test-StableProfiles $profilesWithWrongDefaultMcpGroups }
+
+$profilesWithExtraTopLevelKey = Get-JsonClone $profiles
+$profilesWithExtraTopLevelKey | Add-Member -NotePropertyName 'extraTopLevel' -NotePropertyValue ([pscustomobject]@{})
+Assert-Rejects 'profiles top-level noise key' { Test-StableProfiles $profilesWithExtraTopLevelKey }
 
 $profilesWithExtraProfile = Get-JsonClone $profiles
 $profilesWithExtraProfile.profiles | Add-Member -NotePropertyName 'experimental' -NotePropertyValue ([pscustomobject]@{
