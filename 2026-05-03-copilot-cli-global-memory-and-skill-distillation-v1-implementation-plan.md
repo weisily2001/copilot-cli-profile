@@ -123,7 +123,7 @@ Expected: FAIL with `Missing file` because the new governance files do not exist
 
 ## 自动沉淀
 
-- 全局自动沉淀默认开启，但只允许写入已验证、可复用、跨任务仍有价值的内容
+- 全局自动沉淀的治理规则在本目录维护，后续由 hooks 接入执行
 ```
 
 `C:\Users\HP\.copilot\memory\global\distillation-rules.json`
