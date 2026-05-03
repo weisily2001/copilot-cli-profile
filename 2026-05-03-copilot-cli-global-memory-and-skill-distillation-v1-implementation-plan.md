@@ -8,6 +8,8 @@
 
 **Tech Stack:** PowerShell 5+/7、Markdown、JSON、Copilot CLI hooks、现有 `.copilot\diagnostics` smoke 测试模式
 
+**Execution Note:** 实施在隔离 worktree 中进行。计划中的文件目标仍按最终落点写成 `C:\Users\HP\.copilot\...`，但验证命令和 smoke 脚本必须以当前 worktree 为执行根，不能写死主工作区路径。
+
 ---
 
 ## File Structure
@@ -53,7 +55,7 @@
 param()
 
 $ErrorActionPreference = 'Stop'
-$copilotHome = 'C:\Users\HP\.copilot'
+$copilotHome = Split-Path -Parent $PSScriptRoot
 $memoryIndexPath = Join-Path $copilotHome 'memory\global\memory-index.md'
 $globalFactsPath = Join-Path $copilotHome 'memory\global\global-facts.md'
 $rulesPath = Join-Path $copilotHome 'memory\global\distillation-rules.json'
@@ -85,10 +87,11 @@ Write-Host 'global-memory-distillation smoke PASS'
 Run:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File "C:\Users\HP\.copilot\diagnostics\check-global-memory-distillation-smoke.ps1"
+Set-Location "C:\Users\HP\.copilot\.worktrees\global-memory-distillation-v1"
+powershell -ExecutionPolicy Bypass -File ".\diagnostics\check-global-memory-distillation-smoke.ps1"
 ```
 
-Expected: FAIL with `Missing file` because the new governance files do not exist yet.
+Expected: FAIL with `Missing file` because the new governance files do not exist yet in the current worktree.
 
 - [ ] **Step 3: 写最小实现：新增 4 个治理文件**
 
@@ -184,7 +187,8 @@ Expected: FAIL with `Missing file` because the new governance files do not exist
 Run:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File "C:\Users\HP\.copilot\diagnostics\check-global-memory-distillation-smoke.ps1"
+Set-Location "C:\Users\HP\.copilot\.worktrees\global-memory-distillation-v1"
+powershell -ExecutionPolicy Bypass -File ".\diagnostics\check-global-memory-distillation-smoke.ps1"
 ```
 
 Expected: PASS with `global-memory-distillation smoke PASS`
@@ -192,8 +196,8 @@ Expected: PASS with `global-memory-distillation smoke PASS`
 - [ ] **Step 5: 提交**
 
 ```bash
-git -C C:\Users\HP\.copilot add diagnostics/check-global-memory-distillation-smoke.ps1 memory/global/memory-index.md memory/global/global-facts.md memory/global/distillation-rules.json skills/skill-registry.json
-git -C C:\Users\HP\.copilot commit -m "新增全局记忆沉淀治理骨架"
+git -C C:\Users\HP\.copilot\.worktrees\global-memory-distillation-v1 add diagnostics/check-global-memory-distillation-smoke.ps1 memory/global/memory-index.md memory/global/global-facts.md memory/global/distillation-rules.json skills/skill-registry.json
+git -C C:\Users\HP\.copilot\.worktrees\global-memory-distillation-v1 commit -m "新增全局记忆沉淀治理骨架"
 ```
 
 ### Task 2: 为现有全局 skills 建立统一 registry，并刷新 L1 索引
