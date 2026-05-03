@@ -1,7 +1,7 @@
 param()
 
 $ErrorActionPreference = 'Stop'
-$copilotHome = Split-Path -Parent $PSScriptRoot
+$copilotHome = 'C:\Users\HP\.copilot'
 $memoryIndexPath = Join-Path $copilotHome 'memory\global\memory-index.md'
 $globalFactsPath = Join-Path $copilotHome 'memory\global\global-facts.md'
 $rulesPath = Join-Path $copilotHome 'memory\global\distillation-rules.json'
