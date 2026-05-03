@@ -216,10 +216,10 @@ function Test-StableLspConfig {
     $Lsp
   )
 
-  $lspServers = @($Lsp.lspServers.PSObject.Properties | ForEach-Object { [string]$_.Name })
-  if (@('typescript', 'python') | Where-Object { $_ -notin $lspServers }) {
-    throw 'lsp-config.json must keep typescript and python'
-  }
+  Assert-ExactSet -Name 'lsp-config.json lspServers' -Expected @(
+    'typescript',
+    'python'
+  ) -Actual (@($Lsp.lspServers.PSObject.Properties | ForEach-Object { [string]$_.Name }))
 }
 
 $settings = Get-Content (Join-Path $repoRoot 'settings.json') -Raw | ConvertFrom-Json
@@ -265,6 +265,16 @@ Assert-Rejects 'extra profile definition' { Test-StableProfiles $profilesWithExt
 $profilesWithWrongGroupDefinition = Get-JsonClone $profiles
 $profilesWithWrongGroupDefinition.mcpGroups.'core-remote' = @('context7', 'exa')
 Assert-Rejects 'mcp group definition drift' { Test-StableProfiles $profilesWithWrongGroupDefinition }
+
+$lspWithExtraServer = Get-JsonClone $lsp
+$lspWithExtraServer.lspServers | Add-Member -NotePropertyName 'php' -NotePropertyValue ([pscustomobject]@{
+  command = 'phpactor'
+  args = @('--stdio')
+  fileExtensions = [pscustomobject]@{
+    '.php' = 'php'
+  }
+})
+Assert-Rejects 'extra lsp server definition' { Test-StableLspConfig $lspWithExtraServer }
 
 Test-StableSettings $settings
 Test-StableProfiles $profiles

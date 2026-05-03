@@ -109,20 +109,16 @@ foreach ($profileName in @('default', 'research', 'heavy')) {
   }
 }
 
-foreach ($lspName in @('json', 'yaml', 'go', 'java', 'rust', 'sql')) {
-  if ($lspName -notin @($result.lspNames)) {
-    throw "Missing LSP server '$lspName'"
-  }
-}
+Assert-SequenceEqual -Actual @(@($result.lspNames) | Sort-Object) -Expected @('python', 'typescript') -Context 'stable lspNames'
 
 $defaultProfile = Get-ProfileResolution -Result $result -ProfileName 'default'
-Assert-SequenceEqual -Actual @($defaultProfile.lspGroups) -Expected @('core', 'docs') -Context 'default lspGroups'
+Assert-SequenceEqual -Actual @($defaultProfile.lspGroups) -Expected @('core') -Context 'default lspGroups'
 
 $researchProfile = Get-ProfileResolution -Result $result -ProfileName 'research'
-Assert-SequenceEqual -Actual @($researchProfile.lspGroups) -Expected @('core', 'docs') -Context 'research lspGroups'
+Assert-SequenceEqual -Actual @($researchProfile.lspGroups) -Expected @('core') -Context 'research lspGroups'
 
 $heavyProfile = Get-ProfileResolution -Result $result -ProfileName 'heavy'
-Assert-SequenceEqual -Actual @($heavyProfile.lspGroups) -Expected @('core', 'docs', 'systems', 'enterprise', 'data') -Context 'heavy lspGroups'
+Assert-SequenceEqual -Actual @($heavyProfile.lspGroups) -Expected @('core') -Context 'heavy lspGroups'
 
 if ($result.errorCount -ne 0) {
   throw "Expected errorCount 0, got $($result.errorCount): $(Format-Errors -Result $result)"
