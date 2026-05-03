@@ -1,0 +1,42 @@
+﻿{
+  "version": 1,
+  "routes": {
+    "stablePreference": {
+      "targets": [
+        "memory\\global\\profile.md",
+        "memory\\global\\preferences.json",
+        "memory\\global\\memory-index.md"
+      ],
+      "dedupeBy": "key"
+    },
+    "correction": {
+      "targets": [
+        "memory\\global\\corrections.md",
+        "memory\\global\\memory-index.md"
+      ],
+      "dedupeBy": "scenario"
+    },
+    "globalFact": {
+      "targets": [
+        "memory\\global\\global-facts.md",
+        "memory\\global\\memory-index.md"
+      ],
+      "dedupeBy": "summary"
+    },
+    "skillSignal": {
+      "targets": [
+        "skills\\skill-registry.json",
+        "memory\\global\\memory-index.md"
+      ],
+      "dedupeBy": "name"
+    }
+  },
+  "forbiddenSignals": [
+    "临时",
+    "一次性",
+    "调试输出",
+    "未验证",
+    "猜测"
+  ],
+  "fallbackRoute": "L4"
+}
