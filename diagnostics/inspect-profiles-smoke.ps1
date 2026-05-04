@@ -79,6 +79,27 @@ function Assert-SequenceEqual {
   }
 }
 
+function Get-JsonClone {
+  param($InputObject)
+
+  return ($InputObject | ConvertTo-Json -Depth 100 | ConvertFrom-Json)
+}
+
+function Assert-Rejects {
+  param(
+    [string]$Name,
+    [scriptblock]$Action
+  )
+
+  try {
+    & $Action
+  } catch {
+    return
+  }
+
+  throw "Expected validation to reject '$Name'"
+}
+
 function Get-ProfileResolution {
   param(
     $Result,
@@ -97,6 +118,17 @@ function Get-ProfileResolution {
   return $resolution
 }
 
+function Assert-StableResolvedProfile {
+  param(
+    $Result,
+    [string]$ProfileName
+  )
+
+  $profile = Get-ProfileResolution -Result $Result -ProfileName $ProfileName
+  Assert-SequenceEqual -Actual @($profile.lspGroups) -Expected @('core') -Context "$ProfileName lspGroups"
+  Assert-SequenceEqual -Actual @(@($profile.lspServers) | Sort-Object) -Expected @('python', 'typescript') -Context "$ProfileName lspServers"
+}
+
 $result = & $scriptPath | ConvertFrom-Json
 
 if ($result.profileCount -ne 3) {
@@ -111,14 +143,15 @@ foreach ($profileName in @('default', 'research', 'heavy')) {
 
 Assert-SequenceEqual -Actual @(@($result.lspNames) | Sort-Object) -Expected @('python', 'typescript') -Context 'stable lspNames'
 
-$defaultProfile = Get-ProfileResolution -Result $result -ProfileName 'default'
-Assert-SequenceEqual -Actual @($defaultProfile.lspGroups) -Expected @('core') -Context 'default lspGroups'
+Assert-StableResolvedProfile -Result $result -ProfileName 'default'
+Assert-StableResolvedProfile -Result $result -ProfileName 'research'
+Assert-StableResolvedProfile -Result $result -ProfileName 'heavy'
 
-$researchProfile = Get-ProfileResolution -Result $result -ProfileName 'research'
-Assert-SequenceEqual -Actual @($researchProfile.lspGroups) -Expected @('core') -Context 'research lspGroups'
-
-$heavyProfile = Get-ProfileResolution -Result $result -ProfileName 'heavy'
-Assert-SequenceEqual -Actual @($heavyProfile.lspGroups) -Expected @('core') -Context 'heavy lspGroups'
+$driftedStableResult = Get-JsonClone $result
+$driftedStableResult.profileResolutions.default.lspServers = @()
+Assert-Rejects -Name 'default resolved lspServers drift' {
+  Assert-StableResolvedProfile -Result $driftedStableResult -ProfileName 'default'
+}
 
 if ($result.errorCount -ne 0) {
   throw "Expected errorCount 0, got $($result.errorCount): $(Format-Errors -Result $result)"

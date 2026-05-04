@@ -220,6 +220,40 @@ function Test-StableLspConfig {
     'typescript',
     'python'
   ) -Actual (@($Lsp.lspServers.PSObject.Properties | ForEach-Object { [string]$_.Name }))
+
+  Assert-ExactSet -Name 'lsp-config.json lspServers.typescript keys' -Expected @(
+    'command',
+    'args',
+    'fileExtensions'
+  ) -Actual (@($Lsp.lspServers.typescript.PSObject.Properties | ForEach-Object { [string]$_.Name }))
+  if ($Lsp.lspServers.typescript.command -ne 'typescript-language-server') {
+    throw "lsp-config.json lspServers.typescript.command should keep 'typescript-language-server'"
+  }
+  Assert-ExactSequence -Name 'lsp-config.json lspServers.typescript args' -Expected @('--stdio') -Actual $Lsp.lspServers.typescript.args
+  Assert-ExactSet -Name 'lsp-config.json lspServers.typescript fileExtensions' -Expected @(
+    '.ts',
+    '.tsx'
+  ) -Actual (@($Lsp.lspServers.typescript.fileExtensions.PSObject.Properties | ForEach-Object { [string]$_.Name }))
+  if ($Lsp.lspServers.typescript.fileExtensions.'.ts' -ne 'typescript') {
+    throw "lsp-config.json lspServers.typescript.fileExtensions.'.ts' should keep 'typescript'"
+  }
+  if ($Lsp.lspServers.typescript.fileExtensions.'.tsx' -ne 'typescript') {
+    throw "lsp-config.json lspServers.typescript.fileExtensions.'.tsx' should keep 'typescript'"
+  }
+
+  Assert-ExactSet -Name 'lsp-config.json lspServers.python keys' -Expected @(
+    'command',
+    'args',
+    'fileExtensions'
+  ) -Actual (@($Lsp.lspServers.python.PSObject.Properties | ForEach-Object { [string]$_.Name }))
+  if ($Lsp.lspServers.python.command -ne 'pyright-langserver') {
+    throw "lsp-config.json lspServers.python.command should keep 'pyright-langserver'"
+  }
+  Assert-ExactSequence -Name 'lsp-config.json lspServers.python args' -Expected @('--stdio') -Actual $Lsp.lspServers.python.args
+  Assert-ExactSet -Name 'lsp-config.json lspServers.python fileExtensions' -Expected @('.py') -Actual (@($Lsp.lspServers.python.fileExtensions.PSObject.Properties | ForEach-Object { [string]$_.Name }))
+  if ($Lsp.lspServers.python.fileExtensions.'.py' -ne 'python') {
+    throw "lsp-config.json lspServers.python.fileExtensions.'.py' should keep 'python'"
+  }
 }
 
 $settings = Get-Content (Join-Path $repoRoot 'settings.json') -Raw | ConvertFrom-Json
@@ -275,6 +309,14 @@ $lspWithExtraServer.lspServers | Add-Member -NotePropertyName 'php' -NotePropert
   }
 })
 Assert-Rejects 'extra lsp server definition' { Test-StableLspConfig $lspWithExtraServer }
+
+$lspWithWrongTypeScriptCommand = Get-JsonClone $lsp
+$lspWithWrongTypeScriptCommand.lspServers.typescript.command = 'tsserver'
+Assert-Rejects 'typescript command drift' { Test-StableLspConfig $lspWithWrongTypeScriptCommand }
+
+$lspWithExtraPythonExtension = Get-JsonClone $lsp
+$lspWithExtraPythonExtension.lspServers.python.fileExtensions | Add-Member -NotePropertyName '.pyi' -NotePropertyValue 'python'
+Assert-Rejects 'python fileExtensions drift' { Test-StableLspConfig $lspWithExtraPythonExtension }
 
 Test-StableSettings $settings
 Test-StableProfiles $profiles
