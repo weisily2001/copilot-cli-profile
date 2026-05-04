@@ -10,3 +10,4 @@ description: 当用户明确表达稳定偏好或纠正既有做法时，将规�
 4. 稳定偏好写入 `C:\Users\HP\.copilot\memory\global\profile.md` 或 `preferences.json`。
 5. 明确纠错写入 `C:\Users\HP\.copilot\memory\global\corrections.md`。
 6. 不把项目正式文档写入运行时项目记忆目录。
+7. 稳定偏好或明确纠错写入长期层后，同步刷新 `C:\Users\HP\.copilot\memory\global\memory-index.md`，确保后续任务先命中索引。

@@ -1,4 +1,95 @@
-﻿{
-  "version": 1,
-  "skills": []
+{
+    "version":  1,
+    "skills":  [
+                   {
+                       "name":  "ecc-verification-before-completion",
+                       "purpose":  "在宣称任务完成前回读目标、核对改动面并说明实际结果。",
+                       "triggers":  [
+                                        "完成前验证",
+                                        "收尾核对",
+                                        "结果复核"
+                                    ],
+                       "scope":  "global",
+                       "stability":  "stable",
+                       "relatedDocs":  [
+                                           "memory-lifecycle.md"
+                                       ],
+                       "relatedMemory":  [
+                                             "memory\\global\\memory-index.md"
+                                         ]
+                   },
+                   {
+                       "name":  "memory-handoff",
+                       "purpose":  "在任务结束或窗口切换前压缩项目记忆并维护 handoff/state/decisions。",
+                       "triggers":  [
+                                        "handoff",
+                                        "跨窗口",
+                                        "跨天续做"
+                                    ],
+                       "scope":  "global",
+                       "stability":  "stable",
+                       "relatedDocs":  [
+                                           "memory-governance.md",
+                                           "memory-lifecycle.md"
+                                       ],
+                       "relatedMemory":  [
+                                             "memory\\global\\memory-index.md",
+                                             "memory\\global\\global-facts.md"
+                                         ]
+                   },
+                   {
+                       "name":  "parallel-orchestration",
+                       "purpose":  "在复杂任务执行前决定是否并行、如何拆分子任务和如何收敛。",
+                       "triggers":  [
+                                        "并行",
+                                        "多 agent",
+                                        "任务拆分"
+                                    ],
+                       "scope":  "global",
+                       "stability":  "stable",
+                       "relatedDocs":  [
+                                           "copilot-instructions.md"
+                                       ],
+                       "relatedMemory":  [
+                                             "memory\\global\\memory-index.md"
+                                         ]
+                   },
+                   {
+                       "name":  "preference-learning",
+                       "purpose":  "在用户明确表达稳定偏好或纠错时，把规则升级到全局长期层。",
+                       "triggers":  [
+                                        "稳定偏好",
+                                        "以后都这样",
+                                        "不是这个意思"
+                                    ],
+                       "scope":  "global",
+                       "stability":  "stable",
+                       "relatedDocs":  [
+                                           "memory-lifecycle.md"
+                                       ],
+                       "relatedMemory":  [
+                                             "memory\\global\\profile.md",
+                                             "memory\\global\\preferences.json",
+                                             "memory\\global\\corrections.md"
+                                         ]
+                   },
+                   {
+                       "name":  "research-first",
+                       "purpose":  "实现前先研究目录、关键文件、已有模式和外部文档。",
+                       "triggers":  [
+                                        "先研究",
+                                        "上下文",
+                                        "已有模式",
+                                        "官方文档"
+                                    ],
+                       "scope":  "global",
+                       "stability":  "stable",
+                       "relatedDocs":  [
+                                           "copilot-instructions.md"
+                                       ],
+                       "relatedMemory":  [
+                                             "memory\\global\\memory-index.md"
+                                         ]
+                   }
+               ]
 }

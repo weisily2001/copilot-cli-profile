@@ -4,6 +4,14 @@ $ErrorActionPreference = 'Stop'
 $currentPath = (Get-Location).Path
 $sharedLoaded = $false
 
+function Get-HookCopilotHome {
+  if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+    return Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+  }
+
+  return Join-Path $HOME '.copilot'
+}
+
 function Write-BootstrapFailureMetric {
   param(
     [string]$EventName,
@@ -11,7 +19,7 @@ function Write-BootstrapFailureMetric {
     [string]$ErrorMessage
   )
 
-  $copilotHome = Join-Path $HOME '.copilot'
+  $copilotHome = Get-HookCopilotHome
   $metricsPath = if (-not [string]::IsNullOrWhiteSpace($env:COPILOT_ECC_MEMORY_METRICS_PATH)) { $env:COPILOT_ECC_MEMORY_METRICS_PATH } else { Join-Path $copilotHome 'hook-metrics.jsonl' }
   $keepLast = 100
   if (-not [string]::IsNullOrWhiteSpace($env:COPILOT_ECC_MEMORY_METRICS_KEEP_LAST)) {
@@ -62,7 +70,7 @@ function Get-StableBootstrapErrorMessage {
 }
 
 try {
-  . (Join-Path $HOME '.copilot\hooks\ecc-memory\shared.ps1')
+  . (Join-Path $PSScriptRoot 'shared.ps1')
   $sharedLoaded = $true
 
   $project = $null

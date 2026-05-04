@@ -4,6 +4,14 @@ $ErrorActionPreference = 'Stop'
 $currentPath = (Get-Location).Path
 $sharedLoaded = $false
 
+function Get-HookCopilotHome {
+  if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) {
+    return Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+  }
+
+  return Join-Path $HOME '.copilot'
+}
+
 function Write-BootstrapFailureMetric {
   param(
     [string]$EventName,
@@ -11,7 +19,7 @@ function Write-BootstrapFailureMetric {
     [string]$ErrorMessage
   )
 
-  $copilotHome = Join-Path $HOME '.copilot'
+  $copilotHome = Get-HookCopilotHome
   $metricsPath = if (-not [string]::IsNullOrWhiteSpace($env:COPILOT_ECC_MEMORY_METRICS_PATH)) { $env:COPILOT_ECC_MEMORY_METRICS_PATH } else { Join-Path $copilotHome 'hook-metrics.jsonl' }
   $keepLast = 100
   if (-not [string]::IsNullOrWhiteSpace($env:COPILOT_ECC_MEMORY_METRICS_KEEP_LAST)) {
@@ -62,7 +70,7 @@ function Get-StableBootstrapErrorMessage {
 }
 
 try {
-  . (Join-Path $HOME '.copilot\hooks\ecc-memory\shared.ps1')
+  . (Join-Path $PSScriptRoot 'shared.ps1')
   $sharedLoaded = $true
 
   $project = $null
@@ -70,6 +78,7 @@ try {
   $resolveProjectMs = 0
   $status = 'hookFailed'
   $errorMessage = $null
+  $distillationError = $null
   $resolveStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
   try {
@@ -85,7 +94,23 @@ try {
     else {
       try {
         $writeMetadataMs = Write-LastSessionMetadata -ProjectKey $project.ProjectKey -ProjectRoot $project.ProjectRoot -ProjectDir $project.ProjectDir -EventName 'sessionEnd'
-        $status = 'success'
+
+        try {
+          . (Join-Path $PSScriptRoot 'global-distillation.ps1')
+          Invoke-GlobalMemoryDistillation -CopilotHome (Get-HookCopilotHome) -ForceIndexSync | Out-Null
+        }
+        catch {
+          $distillationError = "session-end distillation failed: $($_.Exception.Message)"
+          [Console]::Error.WriteLine("Warning: session-end distillation skipped: $($_.Exception.Message)")
+        }
+
+        if ([string]::IsNullOrWhiteSpace($distillationError)) {
+          $status = 'success'
+        }
+        else {
+          $status = 'successWithDistillationWarning'
+          $errorMessage = $distillationError
+        }
       }
       catch {
         $status = 'metadataWriteFailed'

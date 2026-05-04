@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 
-$script:CopilotHome = Join-Path $HOME '.copilot'
+$script:CopilotHome = if (-not [string]::IsNullOrWhiteSpace($PSScriptRoot)) { Split-Path -Parent (Split-Path -Parent $PSScriptRoot) } else { Join-Path $HOME '.copilot' }
 $script:ProjectsRootDefault = if (-not [string]::IsNullOrWhiteSpace($env:COPILOT_ECC_MEMORY_PROJECTS_ROOT)) { $env:COPILOT_ECC_MEMORY_PROJECTS_ROOT } else { Join-Path $script:CopilotHome 'memory\projects' }
 $script:ProjectContextCachePath = if (-not [string]::IsNullOrWhiteSpace($env:COPILOT_ECC_MEMORY_CACHE_PATH)) { $env:COPILOT_ECC_MEMORY_CACHE_PATH } else { Join-Path $script:CopilotHome 'memory\project-context-cache.json' }
 $script:EccMetricsPath = Join-Path $script:CopilotHome 'hook-metrics.jsonl'
