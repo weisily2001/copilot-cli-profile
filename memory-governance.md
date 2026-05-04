@@ -19,3 +19,10 @@
   - `project.json` / `last-session.json` 是 hook 维护的运行时元数据文件，用于项目根与最近会话信息，不属于正式文档，也不代替长期知识文件
   - 运行时元数据文件属于合法项目记忆文件，不按越界文件或清理目标处理
   - 只放恢复上下文需要的轻量记忆与元数据，不放项目正式长文档
+
+## 全局记忆治理文件
+
+- `memory\global\memory-index.md`：L1 索引层
+- `memory\global\global-facts.md`：L2 稳定事实补充层
+- `memory\global\distillation-rules.json`：自动沉淀路由规则
+- `skills\skill-registry.json`：L3 技能统一登记层

@@ -30,3 +30,11 @@
 - 稳定偏好 → `C:\Users\HP\.copilot\memory\global\profile.md` 或 `C:\Users\HP\.copilot\memory\global\preferences.json`
 - 明确纠错 → `C:\Users\HP\.copilot\memory\global\corrections.md`
 - 项目长期知识 → `C:\Users\HP\.copilot\memory\projects\<project-id>\decisions.md` 或 `C:\Users\HP\.copilot\memory\projects\<project-id>\overview.md`
+
+## 6. 全局自动沉淀路由
+- 稳定偏好 → `profile.md` / `preferences.json`
+- 明确纠错 → `corrections.md`
+- 全局稳定事实 → `global-facts.md`
+- skill / SOP 线索 → `skill-registry.json`
+- 路由完成后同步刷新 `memory-index.md`
+- 无法明确分类时回退到 L4，不升级

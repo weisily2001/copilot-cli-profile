@@ -94,3 +94,17 @@ Set-Location $HOME\.copilot
 git checkout main
 git pull origin main
 ```
+
+## 全局记忆治理验证
+
+运行全局记忆沉淀 smoke：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "C:\Users\HP\.copilot\diagnostics\check-global-memory-distillation-smoke.ps1"
+```
+
+运行 hook 回归 smoke：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "C:\Users\HP\.copilot\diagnostics\hook-metrics-smoke.ps1"
+```
