@@ -41,6 +41,7 @@ $mcpObservability = Read-Utf8File -Path $mcpObservabilityPath
 Assert-ContainsLiteral -Content $readme -Literal 'profiles.json' -Context 'README.md'
 Assert-ContainsLiteral -Content $readme -Literal 'check-mcp-health.ps1' -Context 'README.md'
 Assert-ContainsLiteral -Content $readme -Literal '默认写入当前仓库根目录下的 `mcp-health.json`' -Context 'README.md'
+Assert-ContainsLiteral -Content $readme -Literal '稳定主线的 LSP 面只保留 `typescript` 与 `python`' -Context 'README.md'
 Assert-ContainsLiteral -Content $startup -Literal 'mcp-observability.md' -Context 'startup-observability.md'
 Assert-ContainsLiteral -Content $mcpObservability -Literal '默认写入当前仓库根目录下的 `mcp-health.json`' -Context 'mcp-observability.md'
 

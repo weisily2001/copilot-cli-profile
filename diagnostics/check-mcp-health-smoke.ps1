@@ -266,7 +266,8 @@ function Assert-WindowsPowerShellUtf8RulesSupport {
   Assert-Equal -Actual $localMissing.suggestedAction -Expected '修复缺失命令' -Message 'Windows PowerShell suggestedAction mismatch'
 }
 
-$fixtureRoot = Join-Path $PSScriptRoot '_check-mcp-health-smoke'
+$legacyFixtureRoot = Join-Path $PSScriptRoot '_check-mcp-health-smoke'
+$fixtureRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("check-mcp-health-smoke-" + [guid]::NewGuid().ToString('N'))
 $fixtureDiag = Join-Path $fixtureRoot 'diagnostics'
 $localPath = Join-Path $fixtureRoot 'mcp-config.json'
 $remotePath = Join-Path $fixtureRoot 'mcp-config.remote.json'
@@ -277,11 +278,15 @@ $brokenProbeScriptPath = Join-Path $fixtureDiag 'broken-head-check-mcp-health.ps
 $brokenEncodingScriptPath = Join-Path $fixtureDiag 'broken-encoding-check-mcp-health.ps1'
 $SkipHttpProbe = $false
 
+if (Test-Path $legacyFixtureRoot) {
+  Remove-Item -Path $legacyFixtureRoot -Recurse -Force
+}
+
 if (Test-Path $fixtureRoot) {
   Remove-Item -Path $fixtureRoot -Recurse -Force
 }
 
-New-Item -ItemType Directory -Path $fixtureDiag | Out-Null
+New-Item -ItemType Directory -Path $fixtureDiag -Force | Out-Null
 
 try {
   $sourceScript = Get-Content -Path $scriptPath -Raw
@@ -428,6 +433,18 @@ finally {
   if (Test-Path $fixtureRoot) {
     Remove-Item -Path $fixtureRoot -Recurse -Force
   }
+
+  if (Test-Path $legacyFixtureRoot) {
+    Remove-Item -Path $legacyFixtureRoot -Recurse -Force
+  }
+}
+
+if (Test-Path $fixtureRoot) {
+  throw "Fixture directory should be removed after smoke: $fixtureRoot"
+}
+
+if (Test-Path $legacyFixtureRoot) {
+  throw "Legacy fixture directory should be removed after smoke: $legacyFixtureRoot"
 }
 
 Write-Host 'check-mcp-health smoke PASS'

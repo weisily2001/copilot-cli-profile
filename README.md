@@ -23,7 +23,8 @@ git clone https://github.com/weisily2001/copilot-cli-profile.git $HOME\.copilot
 - `profiles.json` 定义 `default`、`research`、`heavy` 三档能力组合
 - `default` 适合日常开发与普通问答
 - `research` 强化资料查询、设计分析和文档查证
-- `heavy` 适合复杂多阶段任务与更完整的语言支持
+- `heavy` 适合复杂多阶段任务，按需打开更重的 MCP / 浏览器能力
+- 稳定主线的 LSP 面只保留 `typescript` 与 `python`
 - 可通过 `diagnostics\inspect-profiles.ps1` 查看 profile 与 MCP / LSP 引用是否一致
 
 ```powershell
